@@ -127,7 +127,12 @@ def handle_permission(root, data):
                     continue
                 decision = answer.get("decision")
                 if decision == "allow":
-                    return {"behavior": "allow"}
+                    result = {"behavior": "allow"}
+                    # Answers to a question (AskUserQuestion) come back as the tool's full input
+                    # with an "answers" map; Claude Code uses it instead of showing its own picker.
+                    if isinstance(answer.get("updated_input"), dict):
+                        result["updatedInput"] = answer["updated_input"]
+                    return result
                 if decision == "deny":
                     return {"behavior": "deny",
                             "message": answer.get("message") or "Denied from the Needs You menu bar."}

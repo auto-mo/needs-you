@@ -5,8 +5,9 @@ waiting on you across every session, lets you answer permission prompts from the
 and shows where your usage is going, session by session.
 
 - **Click** the icon: **Needs you**. Permission prompts from any session, with the exact
-  command and Allow / Deny buttons. Sessions that finished, with their last message so you can
-  see what they're asking. What is running now, which sessions are idle, and what finished
+  command and Allow / Deny buttons. Questions with options (click one to answer).
+  Plans waiting for approval. Sessions that finished, with a summary of their last message
+  (click it to read the whole message, formatted). What is running now, which sessions are idle, and what finished
   today. Click any session to jump straight to it in the Claude desktop app.
 - **A coloured dot on the icon** tells you at a glance: red, a permission prompt is waiting;
   yellow, a session finished and is waiting for your reply; blue, sessions are working; green,

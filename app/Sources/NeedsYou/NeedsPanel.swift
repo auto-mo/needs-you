@@ -78,70 +78,74 @@ struct NeedsPanelView: View {
         Text(s).foregroundStyle(p.muted).padding(.horizontal, 4)
     }
 
-    private func nameRow(_ name: String, _ since: Date) -> some View {
+    /// Name, waiting time and, for desktop sessions, a small Open button on the right.
+    private func header(_ name: String, _ since: Date, open sessionId: String?) -> some View {
         HStack(spacing: 8) {
-            HStack(spacing: 7) {
-                Circle().fill(p.accent).frame(width: 7, height: 7)
-                Text(name).font(.system(size: 13.5, weight: .semibold)).lineLimit(1)
-            }
-            Spacer(minLength: 8)
-            Text("waiting \(Fmt.duration(Date().timeIntervalSince(since)))")
+            Circle().fill(p.accent).frame(width: 7, height: 7)
+            Text(name).font(.system(size: 13.5, weight: .semibold)).lineLimit(1)
+            Spacer(minLength: 6)
+            Text(Fmt.duration(Date().timeIntervalSince(since)))
                 .font(Fonts.small).foregroundStyle(p.muted).monospacedDigit().lineLimit(1)
+            if let sid = sessionId, store.openIds[sid] != nil || store.demo {
+                Button("Open") { Opener.open(hostSessionId: store.openIds[sid]) }
+                    .buttonStyle(PillButtonStyle(kind: .outline))
+                    .accessibilityLabel("Open session \(name)")
+            }
         }
     }
 
+    @ViewBuilder
     private func permissionCard(_ c: PermissionCard) -> some View {
         Card {
             VStack(alignment: .leading, spacing: 8) {
-                nameRow(c.name, c.created)
-                (Text("Wants to use ") + Text(c.tool).font(Fonts.mono)).foregroundStyle(p.soft)
-                Text(c.summary)
-                    .font(Fonts.mono).lineLimit(4).truncationMode(.tail)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 10).padding(.vertical, 8)
-                    .background(RoundedRectangle(cornerRadius: 8).fill(p.codeBg))
-                    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(p.line, lineWidth: 1))
-                    .help(c.full)
-                HStack(spacing: 6) {
-                    Button("Allow") { store.answer(c, .allow) }
-                        .buttonStyle(PillButtonStyle(kind: .solid))
-                        .accessibilityLabel("Allow \(c.tool) for \(c.name)")
-                    Button("Deny") { store.answer(c, .deny) }
-                        .buttonStyle(PillButtonStyle(kind: .outline))
-                        .accessibilityLabel("Deny \(c.tool) for \(c.name)")
-                    Spacer()
-                    if c.canOpen { openLink(c.name, c.sessionId) }
+                header(c.name, c.created, open: c.canOpen ? c.sessionId : nil)
+                if let qs = c.questions {
+                    QuestionForm(questions: qs) { store.answer(c, answers: $0) }
+                } else if let plan = c.plan {
+                    Text("Wants to start on this plan").foregroundStyle(p.soft)
+                    MessageBox(text: plan)
+                    decisionButtons(c, allow: "Approve", deny: "Keep planning")
+                } else {
+                    (Text("Wants to use ") + Text(c.tool).font(Fonts.mono)).foregroundStyle(p.soft)
+                    Text(c.summary)
+                        .font(Fonts.mono).lineLimit(4).truncationMode(.tail)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 10).padding(.vertical, 8)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(p.codeBg))
+                        .help(c.full)
+                    decisionButtons(c, allow: "Allow", deny: "Deny")
                 }
             }
         }
-        .padding(.bottom, 0)
+    }
+
+    private func decisionButtons(_ c: PermissionCard, allow: String, deny: String) -> some View {
+        HStack(spacing: 6) {
+            Button(allow) { store.answer(c, .allow) }
+                .buttonStyle(PillButtonStyle(kind: .solid))
+                .accessibilityLabel("\(allow) \(c.tool) for \(c.name)")
+            Button(deny) { store.answer(c, .deny) }
+                .buttonStyle(PillButtonStyle(kind: .outline))
+                .accessibilityLabel("\(deny) \(c.tool) for \(c.name)")
+        }
     }
 
     private func waitingCard(_ w: WaitingCard) -> some View {
         Card {
             VStack(alignment: .leading, spacing: 8) {
-                nameRow(w.name, w.since)
-                if let t = w.preview { ReplyPreview(text: t) } else {
+                header(w.name, w.since, open: w.canOpen ? w.id : nil)
+                if let t = w.preview { MessageBox(text: t) } else {
                     Text("Finished and is waiting for your next message").foregroundStyle(p.soft)
                 }
-                if w.canOpen { openLink(w.name, w.id, prominent: true) }
             }
         }
     }
 
-    @ViewBuilder
-    private func openLink(_ name: String, _ sessionId: String, prominent: Bool = false) -> some View {
-        Button(prominent ? "Reply in session" : "Open session") { Opener.open(hostSessionId: store.openIds[sessionId]) }
-            .buttonStyle(PillButtonStyle(kind: prominent ? .solid : .link))
-            .accessibilityLabel("Open session \(name)")
-    }
-
-    /// Wraps a row so clicking anywhere on it opens the session (desktop sessions only).
+    /// Clicking anywhere on the row opens the session (desktop sessions only).
     @ViewBuilder
     private func openable<V: View>(_ id: String, _ row: V) -> some View {
         if store.openIds[id] != nil || store.demo {
-            Button { Opener.open(hostSessionId: store.openIds[id]) } label: { row }
-                .buttonStyle(RowButtonStyle())
+            row.modifier(OpenOnClick { Opener.open(hostSessionId: store.openIds[id]) })
         } else {
             row
         }

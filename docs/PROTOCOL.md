@@ -42,7 +42,11 @@ was closed.
 {"version": 1, "id": "...", "decision": "allow", "answered_at": 1791676010.5}
 ```
 
-`decision` is `"allow"` or `"deny"`. A deny may carry `"message"`, which the hook passes to
+`decision` is `"allow"` or `"deny"`. An allow may carry `"updated_input"`, which the hook
+passes on as `updatedInput`. The app uses this to answer a question (`tool_name`
+`AskUserQuestion`): it sends back the original `questions` plus
+`"answers": {"<question text>": "<chosen label>"}`. For a multi-select question, the labels are
+joined with ", ". A deny may carry `"message"`, which the hook passes to
 Claude as the reason. On reading an answer, the hook deletes both files and prints the
 documented `PermissionRequest` decision JSON. If the answer is missing when the hook times out
 (default 300 s, set with `NEEDS_YOU_WAIT_SECONDS`), the hook deletes the pending file and exits

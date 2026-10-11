@@ -10,6 +10,10 @@ struct PermissionCard: Identifiable {
     let full: String
     let created: Date
     let canOpen: Bool
+    var input: [String: Any] = [:]
+
+    var questions: [[String: Any]]? { tool == "AskUserQuestion" ? input["questions"] as? [[String: Any]] : nil }
+    var plan: String? { input["plan"] as? String }
 }
 
 struct WaitingCard: Identifiable {
@@ -81,10 +85,11 @@ final class NeedsStore: ObservableObject {
     }
 
     /// Atomic write of answers/<id>.json per PROTOCOL.md.
-    static func writeAnswer(id: String, decision: Decision, message: String? = nil) {
+    static func writeAnswer(id: String, decision: Decision, message: String? = nil, updatedInput: [String: Any]? = nil) {
         var obj: [String: Any] = ["version": 1, "id": id, "decision": decision.rawValue,
                                   "answered_at": Date().timeIntervalSince1970]
         if let m = message { obj["message"] = m }
+        if let u = updatedInput { obj["updated_input"] = u }
         guard let data = try? JSONSerialization.data(withJSONObject: obj, options: [.sortedKeys]) else { return }
         let dir = Paths.needsDir.appendingPathComponent("answers")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -93,6 +98,15 @@ final class NeedsStore: ObservableObject {
 
     func answer(_ card: PermissionCard, _ decision: Decision) {
         if !demo { Self.writeAnswer(id: card.id, decision: decision) }
+        hidden.insert(card.id)
+        permissions.removeAll { $0.id == card.id }
+    }
+
+    /// Answers a question card: the tool's own input plus an "answers" map, per PROTOCOL.md.
+    func answer(_ card: PermissionCard, answers: [String: String]) {
+        var input = card.input
+        input["answers"] = answers
+        if !demo { Self.writeAnswer(id: card.id, decision: .allow, updatedInput: input) }
         hidden.insert(card.id)
         permissions.removeAll { $0.id == card.id }
     }
@@ -133,7 +147,7 @@ final class NeedsStore: ObservableObject {
                 id: id, sessionId: sid, name: name(sid, cwd: j["cwd"] as? String, transcript: j["transcript_path"] as? String),
                 tool: tool, summary: summary, full: full,
                 created: Date(timeIntervalSince1970: epochSeconds(j["created_at"]) ?? now.timeIntervalSince1970),
-                canOpen: desktop(sid)))
+                canOpen: desktop(sid), input: input))
         }
         hidden.formIntersection(present)
         perms.sort { $0.created < $1.created }
@@ -173,7 +187,7 @@ final class NeedsStore: ObservableObject {
         let idles = live.filter { $0.status != "busy" && !shown.contains($0.sessionId) }.map {
             RunningRow(id: $0.sessionId, name: name($0.sessionId, cwd: $0.cwd, transcript: nil),
                        folder: SessionDirectory.folder($0.cwd), since: $0.statusUpdatedAt ?? $0.updatedAt,
-                       snippet: previewCache.text(sessionId: $0.sessionId, transcript: nil).map(Self.oneLine))
+                       snippet: previewCache.text(sessionId: $0.sessionId, transcript: nil).map(Markdown.summary))
         }.sorted { ($0.since ?? .distantPast) > ($1.since ?? .distantPast) }
 
         let dones = lastStopToday.values.sorted { $0.ts > $1.ts }.prefix(8).map {
@@ -190,12 +204,6 @@ final class NeedsStore: ObservableObject {
     }
 
     // MARK: Parsing
-
-    /// Collapses whitespace and strips leading markdown markers, for a short preview line.
-    static func oneLine(_ s: String) -> String {
-        let words = s.split(whereSeparator: { $0.isWhitespace })
-        return words.joined(separator: " ").trimmingCharacters(in: CharacterSet(charactersIn: "#*-> "))
-    }
 
     struct Event { let kind: String; let ts: Date; let sessionId: String; let cwd: String?; let transcript: String?; let message: String? }
 

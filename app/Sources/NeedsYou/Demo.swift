@@ -8,13 +8,17 @@ enum Demo {
             PermissionCard(id: "demo-1", sessionId: "d1", name: "api-server", tool: "Bash",
                            summary: "npm run test -- --watch=false", full: "npm run test -- --watch=false",
                            created: now.addingTimeInterval(-3 * 60), canOpen: true),
-            PermissionCard(id: "demo-2", sessionId: "d2", name: "mobile-app", tool: "Edit",
-                           summary: "~/code/mobile-app/src/screens/Settings.tsx",
-                           full: "~/code/mobile-app/src/screens/Settings.tsx",
-                           created: now.addingTimeInterval(-7 * 60), canOpen: true),
+            PermissionCard(id: "demo-2", sessionId: "d2", name: "mobile-app", tool: "AskUserQuestion",
+                           summary: "", full: "", created: now.addingTimeInterval(-7 * 60), canOpen: true,
+                           input: ["questions": [[
+                               "question": "Which navigation pattern should the settings screen use?",
+                               "header": "Navigation", "multiSelect": false,
+                               "options": [["label": "Tab bar", "description": "Matches the rest of the app"],
+                                           ["label": "Stacked list", "description": "Simpler, one level deep"]],
+                           ]]]),
         ]
         s.waiting = [WaitingCard(id: "d3", name: "docs-site", since: now.addingTimeInterval(-11 * 60), canOpen: true,
-                                 preview: "I updated the getting-started guide and fixed the two broken links. The search page still loads slowly on mobile. Do you want me to look into that next, or leave it for now?")]
+                                 preview: "I updated the **getting-started guide** and fixed the two broken links.\n\n## Still open\n- The search page loads slowly on mobile\n- One image has no alt text\n\nDo you want me to look into the search page next, or leave it for now?")]
         s.running = [
             RunningRow(id: "d4", name: "infra", folder: "code/infra", since: now.addingTimeInterval(-6 * 60)),
             RunningRow(id: "d5", name: "api-server", folder: "code/api-server", since: now.addingTimeInterval(-1 * 60)),

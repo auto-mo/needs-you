@@ -25,46 +25,20 @@ struct PillButtonStyle: ButtonStyle {
     }
 }
 
-/// A whole row that opens its session; highlights on hover so it reads as clickable.
-struct RowButtonStyle: ButtonStyle {
+
+
+/// Makes a whole row open its session on click, with a hover highlight.
+struct OpenOnClick: ViewModifier {
+    let action: () -> Void
     @Environment(\.palette) private var p
     @State private var hover = false
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
+    func body(content: Content) -> some View {
+        content
             .contentShape(Rectangle())
-            .background(RoundedRectangle(cornerRadius: 8).fill(p.codeBg.opacity(hover || configuration.isPressed ? 1 : 0)))
+            .background(RoundedRectangle(cornerRadius: 8).fill(p.codeBg.opacity(hover ? 1 : 0)))
             .onHover { hover = $0 }
-    }
-}
-
-/// The last reply of a session, a few lines at first, with Show more.
-struct ReplyPreview: View {
-    let text: String
-    @Environment(\.palette) private var p
-    @State private var expanded = false
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Group {
-                if expanded {
-                    ScrollView(.vertical) { body(text).fixedSize(horizontal: false, vertical: true) }
-                        .frame(height: 200)
-                } else {
-                    body(text).lineLimit(4)
-                }
-            }
-            .background(RoundedRectangle(cornerRadius: 8).fill(p.codeBg))
-            if text.count > 220 || text.filter({ $0 == "\n" }).count > 3 {
-                Button(expanded ? "Show less" : "Show more") { expanded.toggle() }
-                    .buttonStyle(PillButtonStyle(kind: .link))
-            }
-        }
-        .onDisappear { expanded = false }
-    }
-
-    private func body(_ s: String) -> some View {
-        Text(s).foregroundStyle(p.soft).textSelection(.enabled)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 10).padding(.vertical, 8)
+            .onTapGesture(perform: action)
+            .accessibilityAddTraits(.isButton)
     }
 }
 
