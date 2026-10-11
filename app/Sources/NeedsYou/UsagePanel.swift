@@ -3,13 +3,11 @@ import SwiftUI
 struct UsagePanelView: View {
     @ObservedObject var store: UsageStore
     var scrollable = true
-    var onQuit: () -> Void = {}
     @Environment(\.palette) private var p
 
     var body: some View {
         VStack(spacing: 0) {
             FitOrScroll(scrollable: scrollable, maxHeight: 560) { content }
-            PanelFooter(text: "Right-click for usage, click for Needs you", onQuit: onQuit)
         }
         .frame(width: 380)
         .fixedSize(horizontal: false, vertical: true)
@@ -20,9 +18,7 @@ struct UsagePanelView: View {
             PanelHeader(title: "Usage", trailing: store.limits?.plan)
             limits
             sessionsSection
-            Text("Shares are estimated from each session's own records, weighted by model list price.")
-                .font(Fonts.small).foregroundStyle(p.muted)
-                .padding(.horizontal, 16).padding(.top, 6).padding(.bottom, 12)
+                .padding(.bottom, 8)
         }
         .font(Fonts.body)
     }

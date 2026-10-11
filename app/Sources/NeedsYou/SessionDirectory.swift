@@ -7,6 +7,8 @@ struct LiveSession {
     let name: String?
     let status: String
     let entrypoint: String?
+    /// The desktop app's id for this session (local_...), which its claude://code links require.
+    let hostSessionId: String?
     let updatedAt: Date
     let statusUpdatedAt: Date?
 }
@@ -28,6 +30,7 @@ enum SessionDirectory {
             out.append(LiveSession(
                 pid: pid, sessionId: sid, cwd: j["cwd"] as? String ?? "", name: j["name"] as? String,
                 status: j["status"] as? String ?? "", entrypoint: j["entrypoint"] as? String,
+                hostSessionId: j["hostSessionId"] as? String,
                 updatedAt: Date(timeIntervalSince1970: epochSeconds(j["updatedAt"]) ?? 0),
                 statusUpdatedAt: epochSeconds(j["statusUpdatedAt"]).map { Date(timeIntervalSince1970: $0) }))
         }

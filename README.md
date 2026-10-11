@@ -89,12 +89,16 @@ python3 scripts/install.py --uninstall
 ```
 
 This removes only what the installer added and restores your previous status line. Then quit
-the app and delete it.
+the app (it has no Quit button, to keep the menu clean) and delete it:
+
+```bash
+osascript -e 'quit app "Needs You"' && rm -rf ~/Applications/"Needs You.app"
+```
 
 ## Notes and limits
 
-- Opening a session uses the Claude desktop app's own `claude://code/continue` link, so it works
-  for desktop sessions. Terminal sessions are listed but can't be opened from the menu.
+- Opening a session uses the Claude desktop app's own `claude://code/continue?session=local_…`
+  link, with the app's own session id, so it works for desktop sessions. Terminal sessions are listed but can't be opened from the menu.
 - Usage shares are estimates from local transcripts. Your actual plan usage is the limits bar
   at the top of the Usage panel.
 - Claude Code's session files are an internal format. If a Claude Code update changes them,

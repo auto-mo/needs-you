@@ -47,8 +47,8 @@ final class NeedsStore: ObservableObject {
     @Published var idle: [RunningRow] = []
     @Published var done: [DoneRow] = []
     @Published var openCount = 0
-    /// Sessions running in the Claude desktop app, which can be opened by deep link.
-    @Published var desktop = Set<String>()
+    /// Session id -> the desktop app's own id, for sessions that can be opened by deep link.
+    @Published var openIds: [String: String] = [:]
 
     var attention: Attention {
         if !permissions.isEmpty { return .permission }
@@ -110,7 +110,7 @@ final class NeedsStore: ObservableObject {
             SessionDirectory.resolveName(sessionId: sid, cwd: cwd ?? bySession[sid]?.cwd, sessionName: bySession[sid]?.name,
                                          projectDir: SessionDirectory.projectDir(sessionId: sid, transcriptPath: transcript))
         }
-        func desktop(_ sid: String) -> Bool { bySession[sid]?.entrypoint == "claude-desktop" }
+        func desktop(_ sid: String) -> Bool { bySession[sid]?.hostSessionId != nil }
 
         // Pending permission prompts. A dead hook pid means the prompt was answered elsewhere.
         var perms: [PermissionCard] = []
@@ -186,7 +186,7 @@ final class NeedsStore: ObservableObject {
         idle = idles
         done = Array(dones)
         openCount = live.count
-        self.desktop = Set(live.filter { $0.entrypoint == "claude-desktop" }.map(\.sessionId))
+        openIds = Dictionary(live.compactMap { s in s.hostSessionId.map { (s.sessionId, $0) } }, uniquingKeysWith: { a, _ in a })
     }
 
     // MARK: Parsing

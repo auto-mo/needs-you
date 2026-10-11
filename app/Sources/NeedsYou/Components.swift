@@ -44,16 +44,27 @@ struct ReplyPreview: View {
     @State private var expanded = false
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(text).foregroundStyle(p.soft).lineLimit(expanded ? 40 : 4)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 10).padding(.vertical, 8)
-                .background(RoundedRectangle(cornerRadius: 8).fill(p.codeBg))
-                .textSelection(.enabled)
+            Group {
+                if expanded {
+                    ScrollView(.vertical) { body(text).fixedSize(horizontal: false, vertical: true) }
+                        .frame(height: 200)
+                } else {
+                    body(text).lineLimit(4)
+                }
+            }
+            .background(RoundedRectangle(cornerRadius: 8).fill(p.codeBg))
             if text.count > 220 || text.filter({ $0 == "\n" }).count > 3 {
                 Button(expanded ? "Show less" : "Show more") { expanded.toggle() }
                     .buttonStyle(PillButtonStyle(kind: .link))
             }
         }
+        .onDisappear { expanded = false }
+    }
+
+    private func body(_ s: String) -> some View {
+        Text(s).foregroundStyle(p.soft).textSelection(.enabled)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 10).padding(.vertical, 8)
     }
 }
 
@@ -108,23 +119,6 @@ struct PanelHeader: View {
     }
 }
 
-struct PanelFooter: View {
-    @Environment(\.palette) private var p
-    let text: String
-    let onQuit: () -> Void
-    var body: some View {
-        VStack(spacing: 0) {
-            Rectangle().fill(p.line).frame(height: 1)
-            HStack {
-                Text(text).foregroundStyle(p.muted)
-                Spacer()
-                Button("Quit", action: onQuit).buttonStyle(PillButtonStyle(kind: .link)).accessibilityLabel("Quit Needs You")
-            }
-            .font(Fonts.small)
-            .padding(.horizontal, 16).padding(.top, 4).padding(.bottom, 8)
-        }
-    }
-}
 
 /// Scrolls only when the content would exceed `maxHeight`.
 struct FitOrScroll<Content: View>: View {
@@ -146,11 +140,12 @@ struct FitOrScroll<Content: View>: View {
 
 enum Opener {
     static let desktopBundleId = "com.anthropic.claudefordesktop"
-    /// Opens one Code session in the Claude desktop app (the app's own claude://code/continue link).
-    static func open(sessionId: String) {
-        let q = sessionId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? sessionId
-        if let url = URL(string: "claude://code/continue?session=\(q)&source=needs_you"), NSWorkspace.shared.open(url) { return }
-        openClaudeDesktop()
+    /// Opens one Code session in the Claude desktop app with the app's own claude://code/continue
+    /// link. The app only accepts its own session ids (local_...), not Claude Code's session ids.
+    static func open(hostSessionId: String?) {
+        guard let id = hostSessionId,
+              let url = URL(string: "claude://code/continue?session=\(id)&source=needs_you") else { return openClaudeDesktop() }
+        NSWorkspace.shared.open(url)
     }
 
     static func openClaudeDesktop() {

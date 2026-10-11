@@ -3,13 +3,11 @@ import SwiftUI
 struct NeedsPanelView: View {
     @ObservedObject var store: NeedsStore
     var scrollable = true
-    var onQuit: () -> Void = {}
     @Environment(\.palette) private var p
 
     var body: some View {
         VStack(spacing: 0) {
             FitOrScroll(scrollable: scrollable) { content }
-            PanelFooter(text: "Answers go straight to the session", onQuit: onQuit)
         }
         .frame(width: 380)
         .fixedSize(horizontal: false, vertical: true)
@@ -123,7 +121,6 @@ struct NeedsPanelView: View {
         Card {
             VStack(alignment: .leading, spacing: 8) {
                 nameRow(w.name, w.since)
-                Text("Finished. Its last message:").foregroundStyle(p.muted).font(Fonts.small)
                 if let t = w.preview { ReplyPreview(text: t) } else {
                     Text("Finished and is waiting for your next message").foregroundStyle(p.soft)
                 }
@@ -134,7 +131,7 @@ struct NeedsPanelView: View {
 
     @ViewBuilder
     private func openLink(_ name: String, _ sessionId: String, prominent: Bool = false) -> some View {
-        Button(prominent ? "Reply in session" : "Open session") { Opener.open(sessionId: sessionId) }
+        Button(prominent ? "Reply in session" : "Open session") { Opener.open(hostSessionId: store.openIds[sessionId]) }
             .buttonStyle(PillButtonStyle(kind: prominent ? .solid : .link))
             .accessibilityLabel("Open session \(name)")
     }
@@ -142,10 +139,9 @@ struct NeedsPanelView: View {
     /// Wraps a row so clicking anywhere on it opens the session (desktop sessions only).
     @ViewBuilder
     private func openable<V: View>(_ id: String, _ row: V) -> some View {
-        if store.desktop.contains(id) || store.demo {
-            Button { Opener.open(sessionId: id) } label: { row }
+        if store.openIds[id] != nil || store.demo {
+            Button { Opener.open(hostSessionId: store.openIds[id]) } label: { row }
                 .buttonStyle(RowButtonStyle())
-                .help("Open this session in Claude")
         } else {
             row
         }

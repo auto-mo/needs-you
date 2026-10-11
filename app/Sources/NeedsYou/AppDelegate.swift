@@ -43,8 +43,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 dot.leadingAnchor.constraint(equalTo: b.leadingAnchor, constant: icon.size.width - 1),
             ])
         }
-        needsPopover = makePopover(NeedsPanelView(store: needs, onQuit: { NSApp.terminate(nil) }))
-        usagePopover = makePopover(UsagePanelView(store: usage, onQuit: { NSApp.terminate(nil) }))
+        needsPopover = makePopover(NeedsPanelView(store: needs))
+        usagePopover = makePopover(UsagePanelView(store: usage))
 
         needs.refresh()
         updateTitle()
