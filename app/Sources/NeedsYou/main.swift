@@ -9,6 +9,11 @@ MainActor.assumeIsolated {
         Screenshots.render(to: i + 1 < args.count ? args[i + 1] : "screenshots")
         exit(0)
     }
+    if let i = args.firstIndex(of: "--render-live") {
+        _ = NSApplication.shared
+        Screenshots.renderLive(to: i + 1 < args.count ? args[i + 1] : "live")
+        exit(0)
+    }
     if args.contains("--check") {
         _ = NSApplication.shared
         SelfCheck.run()

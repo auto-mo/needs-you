@@ -5,8 +5,12 @@ waiting on you across every session, lets you answer permission prompts from the
 and shows where your usage is going, session by session.
 
 - **Click** the icon: **Needs you**. Permission prompts from any session, with the exact
-  command and Allow / Deny buttons. Sessions that finished and are waiting for your reply.
-  What is running now, which sessions are idle, and what finished today.
+  command and Allow / Deny buttons. Sessions that finished, with their last message so you can
+  see what they're asking. What is running now, which sessions are idle, and what finished
+  today. Click any session to jump straight to it in the Claude desktop app.
+- **A coloured dot on the icon** tells you at a glance: red, a permission prompt is waiting;
+  yellow, a session finished and is waiting for your reply; blue, sessions are working; green,
+  nothing needs you.
 - **Right-click** the icon: **Usage**. Your plan limits (current session and weekly), then
   usage by session for today or this week. Expand a session to see its main conversation
   against each sub-agent, the models they used, and which inputs (screenshots, shell output,
@@ -89,8 +93,8 @@ the app and delete it.
 
 ## Notes and limits
 
-- "Open session" brings the Claude desktop app forward. It can't yet jump to the exact session,
-  and it is hidden for terminal sessions.
+- Opening a session uses the Claude desktop app's own `claude://code/continue` link, so it works
+  for desktop sessions. Terminal sessions are listed but can't be opened from the menu.
 - Usage shares are estimates from local transcripts. Your actual plan usage is the limits bar
   at the top of the Usage panel.
 - Claude Code's session files are an internal format. If a Claude Code update changes them,

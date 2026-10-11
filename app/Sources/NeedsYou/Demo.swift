@@ -13,13 +13,15 @@ enum Demo {
                            full: "~/code/mobile-app/src/screens/Settings.tsx",
                            created: now.addingTimeInterval(-7 * 60), canOpen: true),
         ]
-        s.waiting = [WaitingCard(id: "d3", name: "docs-site", since: now.addingTimeInterval(-11 * 60), canOpen: true)]
+        s.waiting = [WaitingCard(id: "d3", name: "docs-site", since: now.addingTimeInterval(-11 * 60), canOpen: true,
+                                 preview: "I updated the getting-started guide and fixed the two broken links. The search page still loads slowly on mobile. Do you want me to look into that next, or leave it for now?")]
         s.running = [
             RunningRow(id: "d4", name: "infra", folder: "code/infra", since: now.addingTimeInterval(-6 * 60)),
             RunningRow(id: "d5", name: "api-server", folder: "code/api-server", since: now.addingTimeInterval(-1 * 60)),
         ]
         s.idle = [
-            RunningRow(id: "d6", name: "billing-service", folder: "code/billing-service", since: now.addingTimeInterval(-2 * 3600)),
+            RunningRow(id: "d6", name: "billing-service", folder: "code/billing-service", since: now.addingTimeInterval(-2 * 3600),
+                       snippet: "All 48 tests pass. The refund endpoint now retries twice before failing."),
             RunningRow(id: "d7", name: "design-tokens", folder: "code/design-tokens", since: now.addingTimeInterval(-5 * 3600)),
         ]
         let cal = Calendar.current

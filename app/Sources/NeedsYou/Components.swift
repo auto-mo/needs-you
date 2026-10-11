@@ -25,6 +25,38 @@ struct PillButtonStyle: ButtonStyle {
     }
 }
 
+/// A whole row that opens its session; highlights on hover so it reads as clickable.
+struct RowButtonStyle: ButtonStyle {
+    @Environment(\.palette) private var p
+    @State private var hover = false
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .contentShape(Rectangle())
+            .background(RoundedRectangle(cornerRadius: 8).fill(p.codeBg.opacity(hover || configuration.isPressed ? 1 : 0)))
+            .onHover { hover = $0 }
+    }
+}
+
+/// The last reply of a session, a few lines at first, with Show more.
+struct ReplyPreview: View {
+    let text: String
+    @Environment(\.palette) private var p
+    @State private var expanded = false
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(text).foregroundStyle(p.soft).lineLimit(expanded ? 40 : 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 10).padding(.vertical, 8)
+                .background(RoundedRectangle(cornerRadius: 8).fill(p.codeBg))
+                .textSelection(.enabled)
+            if text.count > 220 || text.filter({ $0 == "\n" }).count > 3 {
+                Button(expanded ? "Show less" : "Show more") { expanded.toggle() }
+                    .buttonStyle(PillButtonStyle(kind: .link))
+            }
+        }
+    }
+}
+
 struct Card<Content: View>: View {
     @Environment(\.palette) private var p
     @ViewBuilder var content: () -> Content
@@ -114,7 +146,13 @@ struct FitOrScroll<Content: View>: View {
 
 enum Opener {
     static let desktopBundleId = "com.anthropic.claudefordesktop"
-    // TODO: deep link to the exact session
+    /// Opens one Code session in the Claude desktop app (the app's own claude://code/continue link).
+    static func open(sessionId: String) {
+        let q = sessionId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? sessionId
+        if let url = URL(string: "claude://code/continue?session=\(q)&source=needs_you"), NSWorkspace.shared.open(url) { return }
+        openClaudeDesktop()
+    }
+
     static func openClaudeDesktop() {
         guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: desktopBundleId) else { return }
         NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())

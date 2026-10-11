@@ -35,7 +35,7 @@ struct NeedsPanelView: View {
                 } else {
                     ForEach(Array(store.running.enumerated()), id: \.element.id) { i, r in
                         if i > 0 { Rectangle().fill(p.line).frame(height: 1) }
-                        runningRow(r, busy: true)
+                        openable(r.id, runningRow(r, busy: true))
                     }
                 }
             }
@@ -43,7 +43,7 @@ struct NeedsPanelView: View {
                 section("Idle", count: store.idle.count) {
                     ForEach(Array(store.idle.enumerated()), id: \.element.id) { i, r in
                         if i > 0 { Rectangle().fill(p.line).frame(height: 1) }
-                        runningRow(r, busy: false)
+                        openable(r.id, runningRow(r, busy: false))
                     }
                 }
             }
@@ -53,11 +53,12 @@ struct NeedsPanelView: View {
                 } else {
                     VStack(alignment: .leading, spacing: 3) {
                         ForEach(store.done) { d in
-                            HStack(spacing: 8) {
+                            openable(d.id, HStack(spacing: 8) {
                                 Text(Fmt.clockTime(d.time)).font(Fonts.small).foregroundStyle(p.muted).monospacedDigit()
                                     .frame(minWidth: 44, alignment: .leading)
                                 Text("\(d.name) finished").foregroundStyle(p.soft).lineLimit(1)
-                            }
+                                Spacer(minLength: 0)
+                            }.padding(.vertical, 2))
                         }
                     }
                     .padding(.horizontal, 4)
@@ -111,7 +112,7 @@ struct NeedsPanelView: View {
                         .buttonStyle(PillButtonStyle(kind: .outline))
                         .accessibilityLabel("Deny \(c.tool) for \(c.name)")
                     Spacer()
-                    if c.canOpen { openLink(c.name) }
+                    if c.canOpen { openLink(c.name, c.sessionId) }
                 }
             }
         }
@@ -122,16 +123,32 @@ struct NeedsPanelView: View {
         Card {
             VStack(alignment: .leading, spacing: 8) {
                 nameRow(w.name, w.since)
-                Text("Finished and is waiting for your next message").foregroundStyle(p.soft)
-                if w.canOpen { openLink(w.name) }
+                Text("Finished. Its last message:").foregroundStyle(p.muted).font(Fonts.small)
+                if let t = w.preview { ReplyPreview(text: t) } else {
+                    Text("Finished and is waiting for your next message").foregroundStyle(p.soft)
+                }
+                if w.canOpen { openLink(w.name, w.id, prominent: true) }
             }
         }
     }
 
-    private func openLink(_ name: String) -> some View {
-        Button("Open session") { Opener.openClaudeDesktop() }
-            .buttonStyle(PillButtonStyle(kind: .link))
+    @ViewBuilder
+    private func openLink(_ name: String, _ sessionId: String, prominent: Bool = false) -> some View {
+        Button(prominent ? "Reply in session" : "Open session") { Opener.open(sessionId: sessionId) }
+            .buttonStyle(PillButtonStyle(kind: prominent ? .solid : .link))
             .accessibilityLabel("Open session \(name)")
+    }
+
+    /// Wraps a row so clicking anywhere on it opens the session (desktop sessions only).
+    @ViewBuilder
+    private func openable<V: View>(_ id: String, _ row: V) -> some View {
+        if store.desktop.contains(id) || store.demo {
+            Button { Opener.open(sessionId: id) } label: { row }
+                .buttonStyle(RowButtonStyle())
+                .help("Open this session in Claude")
+        } else {
+            row
+        }
     }
 
     private func runningRow(_ r: RunningRow, busy: Bool) -> some View {
@@ -139,6 +156,9 @@ struct NeedsPanelView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(r.name).font(.system(size: 13, weight: .medium)).lineLimit(1)
                 Text(r.folder).font(Fonts.small).foregroundStyle(p.muted).lineLimit(1).truncationMode(.middle)
+                if let s = r.snippet {
+                    Text(s).font(Fonts.small).foregroundStyle(p.soft).lineLimit(2).padding(.top, 2)
+                }
             }
             Spacer(minLength: 8)
             HStack(spacing: 6) {

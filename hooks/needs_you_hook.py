@@ -60,7 +60,10 @@ def app_is_running(root):
         return False
 
 
-def log_event(root, name, data):
+MESSAGE_MAX = 4000  # characters of the last reply kept for the menu's preview
+
+
+def log_event(root, name, data, message=None):
     os.makedirs(root, exist_ok=True)
     path = os.path.join(root, "events.jsonl")
     line = json.dumps({
@@ -70,6 +73,7 @@ def log_event(root, name, data):
         "session_id": data.get("session_id"),
         "cwd": data.get("cwd"),
         "transcript_path": data.get("transcript_path"),
+        "message": message[:MESSAGE_MAX] if isinstance(message, str) and message else None,
     })
     with open(path, "a") as f:
         f.write(line + "\n")
@@ -155,9 +159,9 @@ def main():
     elif event == "UserPromptSubmit":
         log_event(root, "prompt", data)
     elif event == "Stop":
-        log_event(root, "stop", data)
+        log_event(root, "stop", data, data.get("last_assistant_message"))
     elif event == "Notification" and data.get("notification_type") == "idle_prompt":
-        log_event(root, "idle", data)
+        log_event(root, "idle", data, data.get("message"))
     elif event == "SessionEnd":
         log_event(root, "end", data)
 

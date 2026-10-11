@@ -13,17 +13,22 @@ struct PermissionCard: Identifiable {
 }
 
 struct WaitingCard: Identifiable {
-    let id: String
+    let id: String  // session id
     let name: String
     let since: Date
     let canOpen: Bool
+    let preview: String?
 }
+
+/// What the menu bar dot shows, most urgent first.
+enum Attention { case permission, reply, running, quiet }
 
 struct RunningRow: Identifiable {
     let id: String
     let name: String
     let folder: String
     let since: Date?
+    var snippet: String? = nil  // idle rows: start of the session's last reply
 }
 
 struct DoneRow: Identifiable {
@@ -42,9 +47,19 @@ final class NeedsStore: ObservableObject {
     @Published var idle: [RunningRow] = []
     @Published var done: [DoneRow] = []
     @Published var openCount = 0
+    /// Sessions running in the Claude desktop app, which can be opened by deep link.
+    @Published var desktop = Set<String>()
+
+    var attention: Attention {
+        if !permissions.isEmpty { return .permission }
+        if !waiting.isEmpty { return .reply }
+        if !running.isEmpty { return .running }
+        return .quiet
+    }
 
     let demo: Bool
     private var hidden = Set<String>()
+    private let previewCache = ReplyPreviewCache()
 
     init(demo: Bool = false) {
         self.demo = demo
@@ -126,13 +141,15 @@ final class NeedsStore: ObservableObject {
         // Sessions that finished and wait for a reply: stop/idle after the latest prompt.
         var waitingSince: [String: Event] = [:]
         var lastStopToday: [String: Event] = [:]
+        var lastReply: [String: String] = [:]
         let midnight = Calendar.current.startOfDay(for: now)
         for e in events {
             switch e.kind {
-            case "prompt", "end": waitingSince[e.sessionId] = nil
+            case "prompt", "end": waitingSince[e.sessionId] = nil; lastReply[e.sessionId] = nil
             case "stop", "idle": if waitingSince[e.sessionId] == nil { waitingSince[e.sessionId] = e }
             default: break
             }
+            if e.kind == "stop", let m = e.message, !m.isEmpty { lastReply[e.sessionId] = m }
             if e.kind == "stop", e.ts >= midnight { lastStopToday[e.sessionId] = e }
         }
         let permSessions = Set(perms.map(\.sessionId))
@@ -140,7 +157,9 @@ final class NeedsStore: ObservableObject {
         for (sid, e) in waitingSince {
             guard let s = bySession[sid], s.status == "idle", now.timeIntervalSince(e.ts) < 12 * 3600,
                   !permSessions.contains(sid) else { continue }
-            waits.append(WaitingCard(id: sid, name: name(sid, cwd: e.cwd, transcript: e.transcript), since: e.ts, canOpen: desktop(sid)))
+            let preview = lastReply[sid] ?? previewCache.text(sessionId: sid, transcript: e.transcript)
+            waits.append(WaitingCard(id: sid, name: name(sid, cwd: e.cwd, transcript: e.transcript), since: e.ts,
+                                     canOpen: desktop(sid), preview: preview))
         }
         waits.sort { $0.since < $1.since }
 
@@ -153,7 +172,8 @@ final class NeedsStore: ObservableObject {
         let shown = permSessions.union(waits.map(\.id))
         let idles = live.filter { $0.status != "busy" && !shown.contains($0.sessionId) }.map {
             RunningRow(id: $0.sessionId, name: name($0.sessionId, cwd: $0.cwd, transcript: nil),
-                       folder: SessionDirectory.folder($0.cwd), since: $0.statusUpdatedAt ?? $0.updatedAt)
+                       folder: SessionDirectory.folder($0.cwd), since: $0.statusUpdatedAt ?? $0.updatedAt,
+                       snippet: previewCache.text(sessionId: $0.sessionId, transcript: nil).map(Self.oneLine))
         }.sorted { ($0.since ?? .distantPast) > ($1.since ?? .distantPast) }
 
         let dones = lastStopToday.values.sorted { $0.ts > $1.ts }.prefix(8).map {
@@ -166,11 +186,18 @@ final class NeedsStore: ObservableObject {
         idle = idles
         done = Array(dones)
         openCount = live.count
+        self.desktop = Set(live.filter { $0.entrypoint == "claude-desktop" }.map(\.sessionId))
     }
 
     // MARK: Parsing
 
-    struct Event { let kind: String; let ts: Date; let sessionId: String; let cwd: String?; let transcript: String? }
+    /// Collapses whitespace and strips leading markdown markers, for a short preview line.
+    static func oneLine(_ s: String) -> String {
+        let words = s.split(whereSeparator: { $0.isWhitespace })
+        return words.joined(separator: " ").trimmingCharacters(in: CharacterSet(charactersIn: "#*-> "))
+    }
+
+    struct Event { let kind: String; let ts: Date; let sessionId: String; let cwd: String?; let transcript: String?; let message: String? }
 
     private func readEvents() -> [Event] {
         guard let text = try? String(contentsOf: Paths.needsDir.appendingPathComponent("events.jsonl"), encoding: .utf8) else { return [] }
@@ -179,7 +206,8 @@ final class NeedsStore: ObservableObject {
             guard let j = json(Data(line.utf8)), let kind = j["event"] as? String, let sid = j["session_id"] as? String,
                   let ts = epochSeconds(j["ts"]) else { continue }
             out.append(Event(kind: kind, ts: Date(timeIntervalSince1970: ts), sessionId: sid,
-                             cwd: j["cwd"] as? String, transcript: j["transcript_path"] as? String))
+                             cwd: j["cwd"] as? String, transcript: j["transcript_path"] as? String,
+                             message: j["message"] as? String))
         }
         return out.sorted { $0.ts < $1.ts }
     }

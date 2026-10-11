@@ -14,6 +14,15 @@ enum Screenshots {
         }
     }
 
+    /// Renders the Needs you panel from the real data on this Mac, for checking it by eye.
+    static func renderLive(to outDir: String) {
+        let dir = URL(fileURLWithPath: outDir)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let store = NeedsStore()
+        store.refresh()
+        save(NeedsPanelView(store: store, scrollable: false), .light, dir.appendingPathComponent("live-needs-you.png"))
+    }
+
     private static func save<V: View>(_ view: V, _ scheme: ColorScheme, _ url: URL) {
         let framed = ThemedRoot { view }
             .clipShape(RoundedRectangle(cornerRadius: 14))

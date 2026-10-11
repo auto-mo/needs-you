@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var tick = 0
     private var timer: Timer?
     private var icon = StatusIcon.current
+    private let dot = NSView()
 
     init(demo: Bool) {
         self.demo = demo
@@ -30,6 +31,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             b.action = #selector(clicked(_:))
             b.sendAction(on: [.leftMouseUp, .rightMouseUp])
             b.setAccessibilityLabel("Needs You")
+            // Status dot over the icon's top-right corner; a subview so the icon stays a template image.
+            dot.wantsLayer = true
+            dot.layer?.cornerRadius = 3.5
+            dot.layer?.borderWidth = 1
+            dot.translatesAutoresizingMaskIntoConstraints = false
+            b.addSubview(dot)
+            NSLayoutConstraint.activate([
+                dot.widthAnchor.constraint(equalToConstant: 7), dot.heightAnchor.constraint(equalToConstant: 7),
+                dot.topAnchor.constraint(equalTo: b.topAnchor, constant: 2),
+                dot.leadingAnchor.constraint(equalTo: b.leadingAnchor, constant: icon.size.width - 1),
+            ])
         }
         needsPopover = makePopover(NeedsPanelView(store: needs, onQuit: { NSApp.terminate(nil) }))
         usagePopover = makePopover(UsagePanelView(store: usage, onQuit: { NSApp.terminate(nil) }))
@@ -87,6 +99,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             b.attributedTitle = NSAttributedString(string: "")
         }
-        b.setAccessibilityLabel(n > 0 ? "Needs You, \(n) waiting" : "Needs You")
+        let (color, label): (NSColor, String) = switch needs.attention {
+        case .permission: (StatusColors.permission, "a permission prompt is waiting")
+        case .reply: (StatusColors.reply, "a session is waiting for your reply")
+        case .running: (StatusColors.running, "sessions are working")
+        case .quiet: (StatusColors.quiet, "nothing needs you")
+        }
+        dot.layer?.backgroundColor = color.cgColor
+        dot.layer?.borderColor = NSColor.black.withAlphaComponent(0.25).cgColor
+        b.setAccessibilityLabel("Needs You, \(label)")
     }
 }

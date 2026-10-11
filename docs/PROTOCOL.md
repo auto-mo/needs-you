@@ -51,8 +51,11 @@ with no output, so the normal prompt takes over.
 ## events.jsonl
 
 ```json
-{"version": 1, "ts": 1791676000.1, "event": "stop", "session_id": "...", "cwd": "...", "transcript_path": "..."}
+{"version": 1, "ts": 1791676000.1, "event": "stop", "session_id": "...", "cwd": "...", "transcript_path": "...", "message": "Done. Should I also update the tests?"}
 ```
+
+`message` is optional: for `stop`, the session's last reply (`last_assistant_message`, cut to
+4000 characters), shown as a preview in the menu. For `idle`, Claude Code's notification text.
 
 `event` is one of `prompt` (UserPromptSubmit), `stop` (Stop), `idle` (Notification with
 `notification_type` `idle_prompt`) or `end` (SessionEnd). The app reads the whole file. The hook
