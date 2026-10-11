@@ -80,6 +80,8 @@ after installing.
 Options:
 - `--no-statusline` skips the status line script. You get no plan-limit bars, and everything
   else works.
+- `--launch-at-login` starts the app when you log in. It adds a standard launch agent, which
+  `--uninstall` removes.
 - `--use-claude-icon` uses the menu bar icon from your own Claude desktop app instead of the
   default mark. The icon is copied on your machine only; it is not part of this repo.
 

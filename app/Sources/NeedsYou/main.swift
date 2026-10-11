@@ -25,6 +25,12 @@ MainActor.assumeIsolated {
         exit(0)
     }
 
+    // One copy only: the login item and a manual open must not give two icons.
+    if let id = Bundle.main.bundleIdentifier,
+       NSRunningApplication.runningApplications(withBundleIdentifier: id).contains(where: { $0 != .current }) {
+        exit(0)
+    }
+
     let app = NSApplication.shared
     app.setActivationPolicy(.accessory)
     let delegate = AppDelegate(demo: args.contains("--demo"))

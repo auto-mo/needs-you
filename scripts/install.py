@@ -6,6 +6,7 @@
   python3 scripts/install.py --uninstall  remove everything this script added
   python3 scripts/install.py --no-statusline       skip the plan-limits status line
   python3 scripts/install.py --use-claude-icon     use the menu bar icon from your own Claude app
+  python3 scripts/install.py --launch-at-login     start ~/Applications/Needs You.app when you log in
 
 The scripts are copied to ~/.claude/needs-you/bin/, so the repo can be moved or deleted
 afterwards. ~/.claude/settings.json is backed up before every change. Hooks you already have
@@ -27,6 +28,10 @@ BIN_DIR = os.path.join(DATA_DIR, "bin")
 STATE = os.path.join(DATA_DIR, "install-state.json")
 ICON_DIR = os.path.expanduser("~/.config/needs-you")
 CLAUDE_APP_ICON = "/Applications/Claude.app/Contents/Resources/TrayIconTemplate{}.png"
+
+APP = os.path.expanduser("~/Applications/Needs You.app")
+AGENT_LABEL = "dev.needsyou.menubar"
+AGENT = os.path.expanduser("~/Library/LaunchAgents/%s.plist" % AGENT_LABEL)
 
 HOOK = os.path.join(BIN_DIR, "needs_you_hook.py")
 STATUSLINE = os.path.join(BIN_DIR, "needs_you_statusline.py")
@@ -125,12 +130,36 @@ def copy_claude_icon():
     print("Using the menu bar icon from your Claude app (copied to %s)." % ICON_DIR)
 
 
+def install_login_item():
+    if not os.path.isdir(APP):
+        print("Copy the app to %s first (see README), then run this again." % APP)
+        return
+    import plistlib
+    os.makedirs(os.path.dirname(AGENT), exist_ok=True)
+    with open(AGENT, "wb") as f:
+        plistlib.dump({
+            "Label": AGENT_LABEL,
+            "ProgramArguments": ["/usr/bin/open", "-a", APP],
+            "RunAtLoad": True,
+            "LimitLoadToSessionType": "Aqua",
+        }, f)
+    print("Needs You will start when you log in (%s)." % AGENT)
+
+
+def remove_login_item():
+    if os.path.exists(AGENT):
+        os.system("launchctl bootout gui/%d %s 2>/dev/null" % (os.getuid(), shq(AGENT)))
+        os.remove(AGENT)
+        print("Removed the login item.")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--uninstall", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--no-statusline", action="store_true")
     ap.add_argument("--use-claude-icon", action="store_true")
+    ap.add_argument("--launch-at-login", action="store_true")
     args = ap.parse_args()
 
     before = load_settings()
@@ -170,6 +199,7 @@ def main():
         os.replace(tmp, SETTINGS)
 
     if args.uninstall:
+        remove_login_item()
         for path in (HOOK, STATUSLINE, STATE):
             if os.path.exists(path):
                 os.remove(path)
@@ -182,6 +212,8 @@ def main():
         json.dump(state, f, indent=2)
     if args.use_claude_icon:
         copy_claude_icon()
+    if args.launch_at_login:
+        install_login_item()
     print("Installed. Hooks apply to Claude Code sessions started from now on.")
 
 
