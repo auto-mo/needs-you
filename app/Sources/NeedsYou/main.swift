@@ -1,0 +1,23 @@
+import AppKit
+
+let args = CommandLine.arguments
+
+MainActor.assumeIsolated {
+    StatusIcon.useDefault = args.contains("--demo") || args.contains("--render-screenshots")
+    if let i = args.firstIndex(of: "--render-screenshots") {
+        _ = NSApplication.shared
+        Screenshots.render(to: i + 1 < args.count ? args[i + 1] : "screenshots")
+        exit(0)
+    }
+    if args.contains("--check") {
+        _ = NSApplication.shared
+        SelfCheck.run()
+        exit(0)
+    }
+
+    let app = NSApplication.shared
+    app.setActivationPolicy(.accessory)
+    let delegate = AppDelegate(demo: args.contains("--demo"))
+    app.delegate = delegate
+    app.run()
+}

@@ -1,0 +1,10 @@
+# Personal notes, design history and the hook spike: not part of the public repo
+notes/
+.claude/
+
+# Build output
+app/.build/
+app/build/
+*.tmp
+.DS_Store
+__pycache__/
