@@ -201,7 +201,7 @@ final class NeedsStore: ObservableObject {
                 canOpen: desktop(sid), input: input))
         }
         hidden.formIntersection(present)
-        perms.sort { $0.created < $1.created }
+        perms.sort { $0.created > $1.created }  // newest first; prompts stay above finished sessions
 
         // Sessions that finished and wait for a reply: stop/idle after the latest prompt.
         var waitingSince: [String: Event] = [:]
@@ -230,12 +230,12 @@ final class NeedsStore: ObservableObject {
             waits.append(WaitingCard(id: sid, name: name(sid, cwd: e.cwd, transcript: e.transcript), since: e.ts,
                                      canOpen: desktop(sid), preview: preview))
         }
-        waits.sort { $0.since < $1.since }
+        waits.sort { $0.since > $1.since }
 
         let runs = live.filter { $0.status == "busy" }.map {
             RunningRow(id: $0.sessionId, name: name($0.sessionId, cwd: $0.cwd, transcript: nil),
                        folder: SessionDirectory.folder($0.cwd), since: $0.statusUpdatedAt ?? $0.updatedAt)
-        }.sorted { ($0.since ?? now) < ($1.since ?? now) }
+        }.sorted { ($0.since ?? now) > ($1.since ?? now) }  // most recently started first
 
         // Every other open session, most recently active first, so nothing open is invisible.
         let shown = permSessions.union(waits.map(\.id))

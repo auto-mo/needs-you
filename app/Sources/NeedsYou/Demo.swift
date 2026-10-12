@@ -20,8 +20,8 @@ enum Demo {
         s.waiting = [WaitingCard(id: "d3", name: "docs-site", since: now.addingTimeInterval(-11 * 60), canOpen: true,
                                  preview: "I updated the **getting-started guide** and fixed the two broken links.\n\n## Still open\n- The search page loads slowly on mobile\n- One image has no alt text\n\nDo you want me to look into the search page next, or leave it for now?")]
         s.running = [
-            RunningRow(id: "d4", name: "infra", folder: "code/infra", since: now.addingTimeInterval(-6 * 60)),
             RunningRow(id: "d5", name: "api-server", folder: "code/api-server", since: now.addingTimeInterval(-1 * 60)),
+            RunningRow(id: "d4", name: "infra", folder: "code/infra", since: now.addingTimeInterval(-6 * 60)),
         ]
         s.idle = [
             RunningRow(id: "d6", name: "billing-service", folder: "code/billing-service", since: now.addingTimeInterval(-2 * 3600),
