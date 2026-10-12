@@ -96,7 +96,10 @@ def log_event(root, name, data, message=None):
 
 
 REPLY_MAX_WAIT = 24 * 3600 - 60  # just under the 86400 s timeout the installer sets
-REPLY_FRAME = "The user replied from the Needs You menu bar. Treat this as their next message:\n\n"
+# Hook feedback isn't shown as a chat message, so Claude is asked to quote the reply first.
+REPLY_FRAME = ("The user replied from the Needs You menu bar. Treat this as their next message. "
+               "Begin your answer with their message quoted on one line, as "
+               "'> **You (from the menu bar):** <their message>', then a blank line, then answer:\n\n")
 
 
 def clear_waiter(root, session_id):
