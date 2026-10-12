@@ -17,7 +17,7 @@ struct NeedsPanelView: View {
 
     private var content: some View {
         VStack(alignment: .leading, spacing: 0) {
-            PanelHeader(title: "Needs you", trailing: "\(store.openCount) sessions open")
+            PanelHeader(title: "Needs you", trailing: "\(store.openCount) sessions open", onRefresh: { store.refresh() })
 
             section("Your turn", count: yourTurnCount) {
                 if yourTurnCount == 0 {

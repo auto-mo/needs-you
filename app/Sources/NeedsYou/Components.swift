@@ -89,19 +89,38 @@ struct PanelHeader: View {
             Text(title).font(Fonts.title).accessibilityAddTraits(.isHeader)
             Spacer()
             if let trailing { Text(trailing).font(Fonts.small).foregroundStyle(p.muted).monospacedDigit() }
-            if let onRefresh {
-                Button(action: onRefresh) {
-                    Image(systemName: "arrow.clockwise").font(.system(size: 12, weight: .semibold)).foregroundStyle(p.muted)
-                        .frame(width: 24, height: 24).contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Refresh")
-            }
+            if let onRefresh { RefreshButton(action: onRefresh) }
         }
         .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 10)
     }
 }
 
+
+/// Reloads the panel; one quick turn of the arrow confirms the click, since the reload is instant.
+struct RefreshButton: View {
+    let action: () -> Void
+    @Environment(\.palette) private var p
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var turns = 0.0
+    @State private var hover = false
+
+    var body: some View {
+        Button {
+            action()
+            if !reduceMotion { withAnimation(.easeOut(duration: 0.45)) { turns += 1 } }
+        } label: {
+            Image(systemName: "arrow.clockwise").font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(hover ? p.ink : p.muted)
+                .rotationEffect(.degrees(turns * 360))
+                .frame(width: 26, height: 26)
+                .background(RoundedRectangle(cornerRadius: 7).fill(hover ? p.codeBg : .clear))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hover = $0 }
+        .accessibilityLabel("Refresh")
+    }
+}
 
 /// Scrolls only when the content would exceed `maxHeight`.
 struct FitOrScroll<Content: View>: View {
