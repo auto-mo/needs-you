@@ -79,17 +79,23 @@ struct NeedsPanelView: View {
     }
 
     /// Name, waiting time and, for desktop sessions, a small Open button on the right.
-    private func header(_ name: String, _ since: Date, open sessionId: String?) -> some View {
+    private func header(_ name: String, _ since: Date, open sessionId: String?, reply replyId: String? = nil) -> some View {
         HStack(spacing: 8) {
             Circle().fill(p.accent).frame(width: 7, height: 7)
             Text(name).font(.system(size: 13.5, weight: .semibold)).lineLimit(1)
             Spacer(minLength: 6)
             Text(Fmt.duration(Date().timeIntervalSince(since)))
                 .font(Fonts.small).foregroundStyle(p.muted).monospacedDigit().lineLimit(1)
+            if let rid = replyId {
+                IconButton(systemName: "arrowshape.turn.up.left", label: "Reply to \(name)",
+                           active: store.replyOpen == rid) {
+                    store.replyOpen = store.replyOpen == rid ? nil : rid
+                }
+            }
             if let sid = sessionId, store.openIds[sid] != nil || store.demo {
-                Button("Open") { Opener.open(hostSessionId: store.openIds[sid]) }
-                    .buttonStyle(PillButtonStyle(kind: .outline))
-                    .accessibilityLabel("Open session \(name)")
+                IconButton(systemName: "arrow.up.right.square", label: "Open session \(name)") {
+                    Opener.open(hostSessionId: store.openIds[sid])
+                }
             }
         }
     }
@@ -133,12 +139,13 @@ struct NeedsPanelView: View {
     private func waitingCard(_ w: WaitingCard) -> some View {
         Card {
             VStack(alignment: .leading, spacing: 8) {
-                header(w.name, w.since, open: w.canOpen ? w.id : nil)
+                header(w.name, w.since, open: w.canOpen ? w.id : nil,
+                       reply: store.replyable.contains(w.id) || store.demo ? w.id : nil)
                 if let t = w.preview { MessageBox(text: t) } else {
                     Text("Finished and is waiting for your next message").foregroundStyle(p.soft)
                 }
-                if store.replyable.contains(w.id) || store.openIds[w.id] != nil || store.demo {
-                    ReplyField { store.reply(to: w.id, text: $0) }
+                if store.replyOpen == w.id {
+                    ReplyField(onSend: { store.reply(to: w.id, text: $0) }, onClose: { store.replyOpen = nil })
                 }
             }
         }

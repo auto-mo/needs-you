@@ -34,6 +34,7 @@ enum Demo {
             DoneRow(id: "x\(i)", time: today.addingTimeInterval(e.1 * 3600), name: e.0)
         }
         s.openCount = 7
+        s.replyOpen = "d3"
     }
 
     @MainActor static func fill(_ s: UsageStore) {
