@@ -15,7 +15,7 @@ struct UsagePanelView: View {
 
     private var content: some View {
         VStack(alignment: .leading, spacing: 0) {
-            PanelHeader(title: "Usage", trailing: store.limits?.plan)
+            PanelHeader(title: "Usage", trailing: store.limits?.plan, onRefresh: { store.load() })
             limits
             sessionsSection
                 .padding(.bottom, 8)
@@ -32,7 +32,9 @@ struct UsagePanelView: View {
                     limitRow(row, accent: i == 0)
                 }
                 if let at = info.capturedAt {
-                    Text("Limits as of \(Fmt.duration(Date().timeIntervalSince(at))) ago").font(Fonts.small).foregroundStyle(p.muted)
+                    // Claude Code passes limits only to the status line of terminal sessions.
+                    Text("Updated \(Fmt.duration(Date().timeIntervalSince(at))) ago, from your last terminal session")
+                        .font(Fonts.small).foregroundStyle(p.muted)
                 }
             } else {
                 Text("Plan limits appear after the status line script runs. See README.")
@@ -43,14 +45,16 @@ struct UsagePanelView: View {
     }
 
     private func limitRow(_ r: LimitRow, accent: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
+        // Past its reset time, the saved percentage is from the old window, so don't show it.
+        let reset = (r.resets ?? .distantFuture) <= Date()
+        return VStack(alignment: .leading, spacing: 5) {
             HStack {
                 Text(r.label)
                 Spacer()
-                Text([Fmt.percent(r.percent / 100), LimitsReader.resetText(r.resets)].compactMap { $0 }.joined(separator: " \u{00B7} "))
+                Text([reset ? nil : Fmt.percent(r.percent / 100), LimitsReader.resetText(r.resets)].compactMap { $0 }.joined(separator: " \u{00B7} "))
                     .font(Fonts.small).foregroundStyle(p.muted).monospacedDigit()
             }
-            bar(fraction: r.percent / 100, color: accent ? p.accent : p.soft, height: 6, outlined: true)
+            bar(fraction: reset ? 0 : r.percent / 100, color: accent ? p.accent : p.soft, height: 6, outlined: true)
         }
         .accessibilityElement(children: .combine)
     }

@@ -137,6 +137,9 @@ struct NeedsPanelView: View {
                 if let t = w.preview { MessageBox(text: t) } else {
                     Text("Finished and is waiting for your next message").foregroundStyle(p.soft)
                 }
+                if store.replyable.contains(w.id) || store.demo {
+                    ReplyField { store.reply(to: w.id, text: $0) }
+                }
             }
         }
     }

@@ -9,6 +9,10 @@ One script handles every event it is registered for, reading the event from stdi
   Notification       log "idle" when notification_type is idle_prompt
   SessionEnd         log "end"
 
+Run with --await-reply as an async Stop hook with asyncRewake: after a session finishes, it
+waits in the background for a reply typed in the menu bar and wakes the session with it
+(exit code 2, reply on stderr). It steps aside as soon as you type in the session itself.
+
 File formats are in docs/PROTOCOL.md. Standard library only.
 
 Safety rule: this script must never be the reason a session hangs or errors. Every path
@@ -90,6 +94,52 @@ def log_event(root, name, data, message=None):
         pass
 
 
+REPLY_MAX_WAIT = 24 * 3600
+REPLY_FRAME = "The user replied from the Needs You menu bar. Treat this as their next message:\n\n"
+
+
+def clear_waiter(root, session_id):
+    if session_id:
+        remove_quietly(os.path.join(root, "waiting", session_id + ".json"))
+
+
+def await_reply(root, data):
+    """Returns the reply text, or None if the session moved on without one."""
+    sid = data.get("session_id")
+    if not sid or "/" in sid:
+        return None
+    waiting = os.path.join(root, "waiting", sid + ".json")
+    reply_path = os.path.join(root, "replies", sid + ".json")
+    os.makedirs(os.path.dirname(waiting), exist_ok=True)
+    os.makedirs(os.path.dirname(reply_path), exist_ok=True)
+    remove_quietly(reply_path)  # a reply meant for an earlier turn is stale
+    me = os.getpid()
+    write_json_atomic(waiting, {"version": VERSION, "session_id": sid, "pid": me, "since": time.time(),
+                                "cwd": data.get("cwd"), "transcript_path": data.get("transcript_path")})
+    deadline = time.time() + REPLY_MAX_WAIT
+    while time.time() < deadline:
+        time.sleep(1)
+        try:
+            with open(waiting) as f:
+                if json.load(f).get("pid") != me:
+                    return None  # a newer turn took over
+        except (OSError, ValueError):
+            return None  # removed: you typed in the session, or it ended
+        if os.getppid() == 1:
+            break  # Claude Code exited
+        if os.path.exists(reply_path):
+            try:
+                with open(reply_path) as f:
+                    text = json.load(f).get("text")
+            except (OSError, ValueError):
+                continue
+            remove_quietly(reply_path)
+            remove_quietly(waiting)
+            return text if isinstance(text, str) and text.strip() else None
+    remove_quietly(waiting)
+    return None
+
+
 def handle_permission(root, data):
     if not app_is_running(root):
         return None
@@ -154,6 +204,14 @@ def main():
     root = base_dir()
     event = data.get("hook_event_name")
 
+    if "--await-reply" in sys.argv:
+        if event == "Stop":
+            text = await_reply(root, data)
+            if text:
+                sys.stderr.write(REPLY_FRAME + text.strip() + "\n")
+                sys.exit(2)  # wakes the session (asyncRewake)
+        return
+
     if event == "PermissionRequest":
         decision = handle_permission(root, data)
         if decision:
@@ -162,18 +220,22 @@ def main():
                 "decision": decision,
             }}))
     elif event == "UserPromptSubmit":
+        clear_waiter(root, data.get("session_id"))
         log_event(root, "prompt", data)
     elif event == "Stop":
         log_event(root, "stop", data, data.get("last_assistant_message"))
     elif event == "Notification" and data.get("notification_type") == "idle_prompt":
         log_event(root, "idle", data, data.get("message"))
     elif event == "SessionEnd":
+        clear_waiter(root, data.get("session_id"))
         log_event(root, "end", data)
 
 
 if __name__ == "__main__":
     try:
         main()
+    except SystemExit:
+        raise
     except Exception:  # never break the session
         pass
     sys.exit(0)

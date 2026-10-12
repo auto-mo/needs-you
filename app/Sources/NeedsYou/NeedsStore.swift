@@ -53,6 +53,8 @@ final class NeedsStore: ObservableObject {
     @Published var openCount = 0
     /// Session id -> the desktop app's own id, for sessions that can be opened by deep link.
     @Published var openIds: [String: String] = [:]
+    /// Sessions whose hook is waiting for a reply from the menu bar.
+    @Published var replyable = Set<String>()
 
     var attention: Attention {
         if !permissions.isEmpty { return .permission }
@@ -63,6 +65,8 @@ final class NeedsStore: ObservableObject {
 
     let demo: Bool
     private var hidden = Set<String>()
+    /// Session id -> time of the reply sent from the menu; its card stays hidden until the session stops again.
+    private var repliedAt: [String: Date] = [:]
     private let previewCache = ReplyPreviewCache()
 
     init(demo: Bool = false) {
@@ -100,6 +104,22 @@ final class NeedsStore: ObservableObject {
         if !demo { Self.writeAnswer(id: card.id, decision: decision) }
         hidden.insert(card.id)
         permissions.removeAll { $0.id == card.id }
+    }
+
+    /// Sends a reply to a finished session; its waiting hook wakes the session with it.
+    func reply(to sessionId: String, text: String) {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty else { return }
+        if !demo {
+            let obj: [String: Any] = ["version": 1, "session_id": sessionId, "text": t, "sent_at": Date().timeIntervalSince1970]
+            let dir = Paths.needsDir.appendingPathComponent("replies")
+            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            if let data = try? JSONSerialization.data(withJSONObject: obj) {
+                try? data.write(to: dir.appendingPathComponent(sessionId + ".json"), options: .atomic)
+            }
+        }
+        repliedAt[sessionId] = Date()
+        waiting.removeAll { $0.id == sessionId }
     }
 
     /// Answers a question card: the tool's own input plus an "answers" map, per PROTOCOL.md.
@@ -156,6 +176,7 @@ final class NeedsStore: ObservableObject {
         var waitingSince: [String: Event] = [:]
         var lastStopToday: [String: Event] = [:]
         var lastReply: [String: String] = [:]
+        var lastStop: [String: Date] = [:]
         let midnight = Calendar.current.startOfDay(for: now)
         for e in events {
             switch e.kind {
@@ -164,6 +185,7 @@ final class NeedsStore: ObservableObject {
             default: break
             }
             if e.kind == "stop", let m = e.message, !m.isEmpty { lastReply[e.sessionId] = m }
+            if e.kind == "stop" { lastStop[e.sessionId] = e.ts }
             if e.kind == "stop", e.ts >= midnight { lastStopToday[e.sessionId] = e }
         }
         let permSessions = Set(perms.map(\.sessionId))
@@ -171,6 +193,7 @@ final class NeedsStore: ObservableObject {
         for (sid, e) in waitingSince {
             guard let s = bySession[sid], s.status == "idle", now.timeIntervalSince(e.ts) < 12 * 3600,
                   !permSessions.contains(sid) else { continue }
+            if let r = repliedAt[sid], (lastStop[sid] ?? .distantPast) < r { continue }
             let preview = lastReply[sid] ?? previewCache.text(sessionId: sid, transcript: e.transcript)
             waits.append(WaitingCard(id: sid, name: name(sid, cwd: e.cwd, transcript: e.transcript), since: e.ts,
                                      canOpen: desktop(sid), preview: preview))
@@ -200,6 +223,12 @@ final class NeedsStore: ObservableObject {
         idle = idles
         done = Array(dones)
         openCount = live.count
+        replyable = Set(((try? FileManager.default.contentsOfDirectory(at: Paths.needsDir.appendingPathComponent("waiting"),
+                                                                       includingPropertiesForKeys: nil)) ?? []).compactMap { u in
+            guard u.pathExtension == "json", let j = readJSON(u), let pid = (j["pid"] as? NSNumber)?.int32Value,
+                  SessionDirectory.isAlive(pid) else { return nil }
+            return u.deletingPathExtension().lastPathComponent
+        })
         openIds = Dictionary(live.compactMap { s in s.hostSessionId.map { (s.sessionId, $0) } }, uniquingKeysWith: { a, _ in a })
     }
 

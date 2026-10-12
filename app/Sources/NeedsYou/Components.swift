@@ -82,12 +82,21 @@ struct PanelHeader: View {
     @Environment(\.palette) private var p
     let title: String
     let trailing: String?
+    var onRefresh: (() -> Void)? = nil
     var body: some View {
         HStack(spacing: 8) {
             MarkImage()
             Text(title).font(Fonts.title).accessibilityAddTraits(.isHeader)
             Spacer()
             if let trailing { Text(trailing).font(Fonts.small).foregroundStyle(p.muted).monospacedDigit() }
+            if let onRefresh {
+                Button(action: onRefresh) {
+                    Image(systemName: "arrow.clockwise").font(.system(size: 12, weight: .semibold)).foregroundStyle(p.muted)
+                        .frame(width: 24, height: 24).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Refresh")
+            }
         }
         .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 10)
     }

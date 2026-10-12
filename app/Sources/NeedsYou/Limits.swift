@@ -72,7 +72,7 @@ enum LimitsReader {
     static func resetText(_ d: Date?, now: Date = Date()) -> String? {
         guard let d else { return nil }
         let s = d.timeIntervalSince(now)
-        if s <= 0 { return "resets now" }
+        if s <= 0 { return "reset at " + Fmt.clockTime(d) }
         if s < 86400 { return "resets in " + Fmt.duration(s) }
         return "resets " + Fmt.weekdayTime(d)
     }

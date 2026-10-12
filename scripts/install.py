@@ -85,6 +85,10 @@ def add_ours(settings):
         if is_async:
             entry["async"] = True
         hooks.setdefault(event, []).append({"matcher": matcher, "hooks": [entry]})
+    # Waits in the background after each turn for a reply typed in the menu bar.
+    hooks["Stop"].append({"matcher": "", "hooks": [{
+        "type": "command", "command": "python3 " + shq(HOOK) + " --await-reply",
+        "async": True, "asyncRewake": True}]})
 
 
 def install_statusline(settings, state):

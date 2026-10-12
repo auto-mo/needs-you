@@ -13,6 +13,8 @@ which both sides honour). All writes are atomic: write `name.tmp`, then rename.
 | `answers/<id>.json` | app | hook | The answer to one prompt. |
 | `events.jsonl` | hook | app | One JSON object per line: session lifecycle events. |
 | `limits.json` | status line script | app | Last plan-limit snapshot. |
+| `waiting/<session_id>.json` | hook | app | A finished session that can take a reply from the menu bar. |
+| `replies/<session_id>.json` | app | hook | Your reply to that session. |
 
 ## pending/<id>.json
 
@@ -64,6 +66,18 @@ with no output, so the normal prompt takes over.
 `event` is one of `prompt` (UserPromptSubmit), `stop` (Stop), `idle` (Notification with
 `notification_type` `idle_prompt`) or `end` (SessionEnd). The app reads the whole file. The hook
 trims it to the last 2000 lines when it grows past 4000.
+
+## Replies
+
+After each turn, a second Stop hook (`--await-reply`, registered with `async` and
+`asyncRewake`) writes `waiting/<session_id>.json` (`{"pid", "since", "cwd", ...}`) and waits in
+the background. When the app writes `replies/<session_id>.json`
+(`{"version": 1, "session_id": "...", "text": "...", "sent_at": ...}`), the hook deletes both
+files, prints the reply on stderr and exits with code 2. Claude Code then wakes the session,
+which receives the reply as Stop hook feedback. The waiting file is removed, and the hook exits
+quietly, when you type in the session itself (UserPromptSubmit), when the session ends, or when
+a newer turn starts waiting. The app offers a reply box only while the waiting file's `pid` is
+alive.
 
 ## limits.json
 

@@ -7,7 +7,8 @@ and shows where your usage is going, session by session.
 - **Click** the icon: **Needs you**. Permission prompts from any session, with the exact
   command and Allow / Deny buttons. Questions with options (click one to answer).
   Plans waiting for approval. Sessions that finished, with a summary of their last message
-  (click it to read the whole message, formatted). What is running now, which sessions are idle, and what finished
+  (click it to read the whole message, formatted), and a reply box: type your answer and
+  the session carries on with it. What is running now, which sessions are idle, and what finished
   today. Click any session to jump straight to it in the Claude desktop app.
 - **A coloured dot on the icon** tells you at a glance: red, a permission prompt is waiting;
   yellow, a session finished and is waiting for your reply; blue, sessions are working; green,
@@ -102,6 +103,9 @@ osascript -e 'quit app "Needs You"' && rm -rf ~/Applications/"Needs You.app"
 
 - Opening a session uses the Claude desktop app's own `claude://code/continue?session=local_…`
   link, with the app's own session id, so it works for desktop sessions. Terminal sessions are listed but can't be opened from the menu.
+- Plan limits update whenever a terminal Claude Code session replies; the desktop app doesn't
+  run status line scripts, so with only desktop sessions open the bars show when they were last
+  updated.
 - Usage shares are estimates from local transcripts. Your actual plan usage is the limits bar
   at the top of the Usage panel.
 - Claude Code's session files are an internal format. If a Claude Code update changes them,
