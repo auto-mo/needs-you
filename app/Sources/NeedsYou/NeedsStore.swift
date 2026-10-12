@@ -225,8 +225,8 @@ final class NeedsStore: ObservableObject {
         openCount = live.count
         replyable = Set(((try? FileManager.default.contentsOfDirectory(at: Paths.needsDir.appendingPathComponent("waiting"),
                                                                        includingPropertiesForKeys: nil)) ?? []).compactMap { u in
-            guard u.pathExtension == "json", let j = readJSON(u), let pid = (j["pid"] as? NSNumber)?.int32Value,
-                  SessionDirectory.isAlive(pid) else { return nil }
+            guard u.pathExtension == "json", let j = readJSON(u), let pid = (j["pid"] as? NSNumber)?.int32Value else { return nil }
+            guard SessionDirectory.isAlive(pid) else { try? FileManager.default.removeItem(at: u); return nil }
             return u.deletingPathExtension().lastPathComponent
         })
         openIds = Dictionary(live.compactMap { s in s.hostSessionId.map { (s.sessionId, $0) } }, uniquingKeysWith: { a, _ in a })

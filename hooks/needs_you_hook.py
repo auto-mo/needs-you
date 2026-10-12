@@ -22,6 +22,7 @@ carries on exactly as if the hook were not installed.
 
 import json
 import os
+import signal
 import sys
 import time
 
@@ -114,6 +115,12 @@ def await_reply(root, data):
     os.makedirs(os.path.dirname(reply_path), exist_ok=True)
     remove_quietly(reply_path)  # a reply meant for an earlier turn is stale
     me = os.getpid()
+
+    def stopped(*_):  # the session was closed: leave no waiting file behind
+        remove_quietly(waiting)
+        os._exit(0)
+    for s in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
+        signal.signal(s, stopped)
     write_json_atomic(waiting, {"version": VERSION, "session_id": sid, "pid": me, "since": time.time(),
                                 "cwd": data.get("cwd"), "transcript_path": data.get("transcript_path")})
     deadline = time.time() + REPLY_MAX_WAIT
