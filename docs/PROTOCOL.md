@@ -76,8 +76,9 @@ the background. When the app writes `replies/<session_id>.json`
 files, prints the reply on stderr and exits with code 2. Claude Code then wakes the session,
 which receives the reply as Stop hook feedback. The waiting file is removed, and the hook exits
 quietly, when you type in the session itself (UserPromptSubmit), when the session ends, or when
-a newer turn starts waiting. The app offers a reply box only while the waiting file's `pid` is
-alive.
+a newer turn starts waiting. The installer sets `timeout: 86400` on this hook, because Claude Code otherwise stops
+async hooks at the default 600 s. Without a live waiter, the app copies the reply to the
+clipboard and opens the session for you to paste it.
 
 ## limits.json
 

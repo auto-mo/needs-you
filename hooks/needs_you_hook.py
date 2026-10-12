@@ -95,7 +95,7 @@ def log_event(root, name, data, message=None):
         pass
 
 
-REPLY_MAX_WAIT = 24 * 3600
+REPLY_MAX_WAIT = 24 * 3600 - 60  # just under the 86400 s timeout the installer sets
 REPLY_FRAME = "The user replied from the Needs You menu bar. Treat this as their next message:\n\n"
 
 

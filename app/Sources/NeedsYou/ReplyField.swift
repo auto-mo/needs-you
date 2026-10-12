@@ -2,11 +2,22 @@ import SwiftUI
 
 /// Reply box on a finished session's card. Return sends; Option-Return adds a line.
 struct ReplyField: View {
-    let onSend: (String) -> Void
+    /// Returns false when the reply was copied for pasting instead of sent.
+    let onSend: (String) -> Bool
     @Environment(\.palette) private var p
     @State private var text = ""
+    @State private var copied = false
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            field
+            if copied {
+                Text("Copied. Paste it in the session.").font(Fonts.small).foregroundStyle(p.muted)
+            }
+        }
+    }
+
+    private var field: some View {
         HStack(alignment: .bottom, spacing: 6) {
             if Screenshots.active {
                 Text("Reply").foregroundStyle(p.muted)
@@ -35,6 +46,6 @@ struct ReplyField: View {
         let t = text
         guard !t.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         text = ""
-        onSend(t)
+        copied = !onSend(t)
     }
 }

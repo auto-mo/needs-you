@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import SwiftUI
 
@@ -107,9 +108,18 @@ final class NeedsStore: ObservableObject {
     }
 
     /// Sends a reply to a finished session; its waiting hook wakes the session with it.
-    func reply(to sessionId: String, text: String) {
+    /// Without a live waiter, copies the reply and opens the session to paste it there.
+    /// Returns false in that case.
+    @discardableResult
+    func reply(to sessionId: String, text: String) -> Bool {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !t.isEmpty else { return }
+        guard !t.isEmpty else { return true }
+        if !demo && !replyable.contains(sessionId) {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(t, forType: .string)
+            Opener.open(hostSessionId: openIds[sessionId])
+            return false
+        }
         if !demo {
             let obj: [String: Any] = ["version": 1, "session_id": sessionId, "text": t, "sent_at": Date().timeIntervalSince1970]
             let dir = Paths.needsDir.appendingPathComponent("replies")
@@ -120,6 +130,7 @@ final class NeedsStore: ObservableObject {
         }
         repliedAt[sessionId] = Date()
         waiting.removeAll { $0.id == sessionId }
+        return true
     }
 
     /// Answers a question card: the tool's own input plus an "answers" map, per PROTOCOL.md.

@@ -88,7 +88,9 @@ def add_ours(settings):
     # Waits in the background after each turn for a reply typed in the menu bar.
     hooks["Stop"].append({"matcher": "", "hooks": [{
         "type": "command", "command": "python3 " + shq(HOOK) + " --await-reply",
-        "async": True, "asyncRewake": True}]})
+        "async": True, "asyncRewake": True,
+        # Claude Code stops async hooks at the default 600 s; a reply can come hours later.
+        "timeout": 86400}]})
 
 
 def install_statusline(settings, state):
