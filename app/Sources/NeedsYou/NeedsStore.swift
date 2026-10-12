@@ -68,7 +68,33 @@ final class NeedsStore: ObservableObject {
     private var hidden = Set<String>()
     /// Session id -> time of the reply sent from the menu; its card stays hidden until the session stops again.
     private var repliedAt: [String: Date] = [:]
+    /// Session id -> when you dismissed its card; it stays in Idle until the session stops again.
+    /// Saved in dismissed.json so it survives restarts.
+    private var dismissedAt: [String: Date] = NeedsStore.loadDismissed()
     private let previewCache = ReplyPreviewCache()
+
+    func dismiss(_ sessionId: String) {
+        dismissedAt[sessionId] = Date()
+        waiting.removeAll { $0.id == sessionId }
+        if replyOpen == sessionId { replyOpen = nil }
+        if !demo { saveDismissed() }
+        refresh()
+    }
+
+    private static var dismissedURL: URL { Paths.needsDir.appendingPathComponent("dismissed.json") }
+
+    private static func loadDismissed() -> [String: Date] {
+        guard let d = try? Data(contentsOf: dismissedURL),
+              let j = try? JSONSerialization.jsonObject(with: d) as? [String: Double] else { return [:] }
+        return j.mapValues { Date(timeIntervalSince1970: $0) }
+    }
+
+    private func saveDismissed() {
+        let week = Date().addingTimeInterval(-7 * 86400)
+        dismissedAt = dismissedAt.filter { $0.value > week }
+        let obj = dismissedAt.mapValues { $0.timeIntervalSince1970 }
+        if let d = try? JSONSerialization.data(withJSONObject: obj) { try? d.write(to: Self.dismissedURL, options: .atomic) }
+    }
 
     init(demo: Bool = false) {
         self.demo = demo
@@ -199,6 +225,7 @@ final class NeedsStore: ObservableObject {
             guard let s = bySession[sid], s.status == "idle", now.timeIntervalSince(e.ts) < 12 * 3600,
                   !permSessions.contains(sid) else { continue }
             if let r = repliedAt[sid], (lastStop[sid] ?? .distantPast) < r { continue }
+            if let d = dismissedAt[sid], (lastStop[sid] ?? .distantPast) < d { continue }
             let preview = lastReply[sid] ?? previewCache.text(sessionId: sid, transcript: e.transcript)
             waits.append(WaitingCard(id: sid, name: name(sid, cwd: e.cwd, transcript: e.transcript), since: e.ts,
                                      canOpen: desktop(sid), preview: preview))

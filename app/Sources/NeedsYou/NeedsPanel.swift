@@ -79,7 +79,8 @@ struct NeedsPanelView: View {
     }
 
     /// Name, waiting time and, for desktop sessions, a small Open button on the right.
-    private func header(_ name: String, _ since: Date, open sessionId: String?, reply replyId: String? = nil) -> some View {
+    private func header(_ name: String, _ since: Date, open sessionId: String?, reply replyId: String? = nil,
+                        dismiss dismissId: String? = nil) -> some View {
         HStack(spacing: 8) {
             Circle().fill(p.accent).frame(width: 7, height: 7)
             Text(name).font(.system(size: 13.5, weight: .semibold)).lineLimit(1)
@@ -96,6 +97,9 @@ struct NeedsPanelView: View {
                 IconButton(systemName: "arrow.up.right.square", label: "Open session \(name)") {
                     Opener.open(hostSessionId: store.openIds[sid])
                 }
+            }
+            if let did = dismissId {
+                IconButton(systemName: "xmark", label: "Dismiss \(name), move it to Idle") { store.dismiss(did) }
             }
         }
     }
@@ -140,7 +144,8 @@ struct NeedsPanelView: View {
         Card {
             VStack(alignment: .leading, spacing: 8) {
                 header(w.name, w.since, open: w.canOpen ? w.id : nil,
-                       reply: store.replyable.contains(w.id) || store.demo ? w.id : nil)
+                       reply: store.replyable.contains(w.id) || store.demo ? w.id : nil,
+                       dismiss: w.id)
                 if let t = w.preview { MessageBox(text: t) } else {
                     Text("Finished and is waiting for your next message").foregroundStyle(p.soft)
                 }

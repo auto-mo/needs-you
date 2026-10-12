@@ -15,6 +15,7 @@ which both sides honour). All writes are atomic: write `name.tmp`, then rename.
 | `limits.json` | status line script | app | Last plan-limit snapshot. |
 | `waiting/<session_id>.json` | hook | app | A finished session that can take a reply from the menu bar. |
 | `replies/<session_id>.json` | app | hook | Your reply to that session. |
+| `dismissed.json` | app | app | `{session_id: epoch seconds}`: finished sessions you dismissed. They show in Idle until they stop again. |
 
 ## pending/<id>.json
 

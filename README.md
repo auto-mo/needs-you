@@ -8,7 +8,8 @@ and shows where your usage is going, session by session.
   command and Allow / Deny buttons. Questions with options (click one to answer).
   Plans waiting for approval. Sessions that finished, with a summary of their last message
   (click it to read the whole message, formatted), and a Reply button: type your answer,
-  press Return, and the session carries on with it, without leaving the menu. What is running now, which sessions are idle, and what finished
+  press Return, and the session carries on with it, without leaving the menu.
+  Dismiss a finished session you're done with and it moves to Idle until it has something new. What is running now, which sessions are idle, and what finished
   today. Click any session to jump straight to it in the Claude desktop app.
 - **A coloured dot on the icon** tells you at a glance: red, a permission prompt is waiting;
   yellow, a session finished and is waiting for your reply; blue, sessions are working; green,
