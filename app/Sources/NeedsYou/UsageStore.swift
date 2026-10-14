@@ -10,6 +10,7 @@ final class UsageStore: ObservableObject {
     @Published var expanded = Set<String>()
     @Published var showRest = false
     @Published var limits: LimitsInfo?
+    @Published var limitsError: String?
 
     let demo: Bool
     private var generation = 0
@@ -23,9 +24,20 @@ final class UsageStore: ObservableObject {
         if !demo { limits = LimitsReader.read() }
     }
 
-    func load() {
+    /// Asks the usage service for live limits (at most once a minute unless forced).
+    func fetchLiveLimits(force: Bool) {
+        guard !demo else { return }
+        Task {
+            await LiveLimits.shared.refresh(force: force)
+            limitsError = await LiveLimits.shared.lastError
+            refreshLimits()
+        }
+    }
+
+    func load(force: Bool = false) {
         guard !demo else { return }
         refreshLimits()
+        fetchLiveLimits(force: force)
         generation += 1
         let gen = generation
         let r = range

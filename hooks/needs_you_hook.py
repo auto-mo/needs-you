@@ -150,6 +150,69 @@ def await_reply(root, data):
     return None
 
 
+class AnsweredInSession:
+    """Notices when a prompt is answered in the session's own window instead of the menu.
+
+    Claude Code doesn't stop this hook when that happens, so the hook follows the transcript:
+    once a tool_result appears for this exact tool call (same tool, same input), the prompt is
+    settled and the hook steps aside, which removes the card from the menu.
+    """
+
+    TAIL = 2_000_000  # bytes of transcript read at the start
+
+    def __init__(self, data):
+        self.path = data.get("transcript_path")
+        self.tool = data.get("tool_name")
+        self.input = data.get("tool_input")
+        self.target = None
+        self.offset = 0
+        if not self.path:
+            return
+        try:
+            size = os.path.getsize(self.path)
+            with open(self.path, "rb") as f:
+                f.seek(max(0, size - self.TAIL))
+                chunk = f.read(size - max(0, size - self.TAIL))
+        except OSError:
+            self.path = None
+            return
+        self.offset = size
+        for line in chunk.splitlines():
+            self._scan(line)  # the call may already be in the transcript
+
+    def _scan(self, line):
+        try:
+            content = (json.loads(line).get("message") or {}).get("content")
+        except (ValueError, AttributeError):
+            return False
+        if not isinstance(content, list):
+            return False
+        for b in content:
+            if not isinstance(b, dict):
+                continue
+            if b.get("type") == "tool_use" and b.get("name") == self.tool and b.get("input") == self.input:
+                self.target = b.get("id")
+            elif b.get("type") == "tool_result" and self.target and b.get("tool_use_id") == self.target:
+                return True
+        return False
+
+    def settled(self):
+        if not self.path:
+            return False
+        try:
+            size = os.path.getsize(self.path)
+            if size <= self.offset:
+                return False
+            with open(self.path, "rb") as f:
+                f.seek(self.offset)
+                data = f.read(size - self.offset)
+        except OSError:
+            return False
+        end = data.rfind(b"\n") + 1  # complete lines only
+        self.offset += end
+        return any(self._scan(line) for line in data[:end].splitlines())
+
+
 def handle_permission(root, data):
     if not app_is_running(root):
         return None
@@ -175,6 +238,7 @@ def handle_permission(root, data):
         "permission_mode": data.get("permission_mode"),
     })
 
+    watch = AnsweredInSession(data)
     try:
         deadline = time.time() + wait_seconds()
         while time.time() < deadline:
@@ -199,6 +263,8 @@ def handle_permission(root, data):
                 return None
             if not app_is_running(root):
                 return None  # app quit while we waited; hand back to the normal prompt
+            if watch.settled():
+                return None  # answered in the session itself
             time.sleep(POLL_INTERVAL)
         return None
     finally:
@@ -211,6 +277,8 @@ def main():
         data = json.load(sys.stdin)
     except ValueError:
         return
+    if os.environ.get("NEEDS_YOU_SKIP"):
+        return  # the app's own background request (it refreshes the sign-in for plan limits)
     root = base_dir()
     event = data.get("hook_event_name")
 

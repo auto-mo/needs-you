@@ -117,6 +117,7 @@ actor UsageScanner {
             return m >= start
         }
         for dir in (try? fm.contentsOfDirectory(at: Paths.projects, includingPropertiesForKeys: nil)) ?? [] {
+            if dir.lastPathComponent.hasSuffix("needs-you-refresh") { continue }  // the app's own sign-in refresh
             for item in (try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? [] {
                 if item.pathExtension == "jsonl" {
                     if fresh(item) { out.append(FileRef(url: item, sessionId: item.deletingPathExtension().lastPathComponent, projectDir: dir, agentId: nil)) }
@@ -209,23 +210,39 @@ actor UsageScanner {
         try? h.seek(toOffset: agg.offset)
         var carry = Data()
         let chunk = 4 * 1024 * 1024
-        while true {
+        var more = true
+        while more { autoreleasepool {  // each 4 MB read is released before the next
             let data = (try? h.read(upToCount: chunk)) ?? Data()
-            if data.isEmpty { break }
+            if data.isEmpty { more = false; return }
             carry.append(data)
             var lineStart = carry.startIndex
             while let nl = carry[lineStart...].firstIndex(of: 0x0A) {
-                ingest(Data(carry[lineStart..<nl]), into: agg)
+                // Drain each line's temporary objects now; a background thread has no pool that empties
+                // until the scan ends, which pushed memory past 500 MB on a week of transcripts.
+                autoreleasepool { ingest(Data(carry[lineStart..<nl]), into: agg) }
                 lineStart = carry.index(after: nl)
             }
             agg.offset += UInt64(lineStart - carry.startIndex)
             carry = Data(carry[lineStart...])
-        }
+        } }
         return agg
     }
 
     private static let assistantMark = Data("\"assistant\"".utf8)
     private static let resultMark = Data("tool_result".utf8)
+    private static let imageMark = Data("\"type\":\"image\"".utf8)
+    private static let idMark = Data("\"tool_use_id\":\"".utf8)
+
+    private static func toolUseIds(_ line: Data) -> [String] {
+        var ids: [String] = []
+        var from = line.startIndex
+        while let r = line.range(of: idMark, in: from..<line.endIndex),
+              let end = line[r.upperBound...].firstIndex(of: 0x22) {
+            ids.append(String(decoding: line[r.upperBound..<end], as: UTF8.self))
+            from = end
+        }
+        return ids
+    }
     private static let iso: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter(); f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]; return f
     }()
@@ -234,6 +251,14 @@ actor UsageScanner {
     private func ingest(_ line: Data, into agg: FileAgg) {
         let isAssistant = line.range(of: Self.assistantMark) != nil
         let isResult = !isAssistant && line.range(of: Self.resultMark) != nil
+        // Big tool results are mostly screenshots or long output; read what's needed without decoding them.
+        if isResult && line.count > 64 * 1024 {
+            let image = line.range(of: Self.imageMark) != nil
+            for id in Self.toolUseIds(line) {
+                agg.pendingCats.append(image ? "Screenshots" : Self.category(name: agg.toolNames[id] ?? ""))
+            }
+            return
+        }
         guard isAssistant || isResult, let obj = json(line) else { return }
         if agg.cwd == nil, let c = obj["cwd"] as? String { agg.cwd = c }
         let type = obj["type"] as? String
@@ -282,7 +307,10 @@ actor UsageScanner {
         if let parts = result["content"] as? [[String: Any]], parts.contains(where: { $0["type"] as? String == "image" }) {
             return "Screenshots"
         }
-        let name = names[result["tool_use_id"] as? String ?? ""] ?? ""
+        return category(name: names[result["tool_use_id"] as? String ?? ""] ?? "")
+    }
+
+    private static func category(name: String) -> String {
         switch name {
         case "Bash": return "Shell output"
         case "Read": return "File reads"

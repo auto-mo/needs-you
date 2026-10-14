@@ -52,6 +52,7 @@ final class NeedsStore: ObservableObject {
     @Published var idle: [RunningRow] = []
     @Published var done: [DoneRow] = []
     @Published var openCount = 0
+    @Published var updatedAt = Date()
     /// Session id -> the desktop app's own id, for sessions that can be opened by deep link.
     @Published var openIds: [String: String] = [:]
     /// Sessions whose hook is waiting for a reply from the menu bar.
@@ -255,6 +256,7 @@ final class NeedsStore: ObservableObject {
         idle = idles
         done = Array(dones)
         openCount = live.count
+        updatedAt = now
         replyable = Set(((try? FileManager.default.contentsOfDirectory(at: Paths.needsDir.appendingPathComponent("waiting"),
                                                                        includingPropertiesForKeys: nil)) ?? []).compactMap { u in
             guard u.pathExtension == "json", let j = readJSON(u), let pid = (j["pid"] as? NSNumber)?.int32Value else { return nil }

@@ -19,6 +19,25 @@ MainActor.assumeIsolated {
         Screenshots.renderMessage(to: args[i + 1], text: (try? String(contentsOfFile: args[i + 2], encoding: .utf8)) ?? "")
         exit(0)
     }
+    if args.contains("--renew-signin") {  // check the sign-in renewal path on its own
+        print("claude:", LiveLimits.claudePath() ?? "not found")
+        let before = LiveLimits.readCredential()?.expires
+        LiveLimits.renewSignIn()
+        print("expiry before:", before.map { "\($0)" } ?? "-", "after:", LiveLimits.readCredential().map { "\($0.expires)" } ?? "-")
+        exit(0)
+    }
+    if args.contains("--fetch-limits") {  // check the live limits path; prints labels and numbers only
+        let done = DispatchSemaphore(value: 0)
+        Task.detached {
+            await LiveLimits.shared.refresh(force: true)
+            if let e = await LiveLimits.shared.lastError { print("error:", e) }
+            for r in LimitsReader.read()?.rows ?? [] { print(r.label, Int(r.percent), LimitsReader.resetText(r.resets) ?? "") }
+            print("live:", LimitsReader.read()?.live ?? false, "plan:", LimitsReader.read()?.plan ?? "-")
+            done.signal()
+        }
+        done.wait()
+        exit(0)
+    }
     if args.contains("--check") {
         _ = NSApplication.shared
         SelfCheck.run()

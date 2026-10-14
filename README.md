@@ -27,7 +27,8 @@ and shows where your usage is going, session by session.
 *Screenshots use demo data.*
 
 Works with sessions in the terminal and in the Claude desktop app. Everything stays on your
-Mac: no server, no network calls, no account.
+Mac, with one exception: to show live plan limits, the app asks Anthropic's usage service for
+your numbers, the same request `/usage` makes (details below). No other server, no account.
 
 ## How it works
 
@@ -46,8 +47,15 @@ Claude Code session ── PermissionRequest hook ──▶ ~/.claude/needs-you/
   apply, and there is no "allow everything" button.
 - Session status comes from Claude Code's own session files. Usage comes from the session
   transcripts already on your disk, weighted by each model's list price so that cheap cache
-  reads don't dominate. Plan limits come from a small status line script that saves the numbers
-  Claude Code already passes to the status line.
+  reads don't dominate.
+- Plan limits are fetched live from `api.anthropic.com/api/oauth/usage`, the request Claude
+  Code's own `/usage` makes, using the sign-in Claude Code keeps in your Keychain (item
+  "Claude Code-credentials"). The token is read into memory for that request only; it is never
+  written to disk, logged, or sent anywhere else. That sign-in expires every few hours and only
+  the `claude` command renews it, so when it has expired the app runs one tiny Haiku request
+  (`claude -p`, from `~/.claude/needs-you/needs-you-refresh`) so Claude Code renews it. That
+  happens at most a few times a day; the hook ignores those requests. If anything fails, the app
+  falls back to the numbers a terminal session's status line last saved.
 
 The file format is in [docs/PROTOCOL.md](docs/PROTOCOL.md).
 
@@ -104,9 +112,9 @@ osascript -e 'quit app "Needs You"' && rm -rf ~/Applications/"Needs You.app"
 
 - Opening a session uses the Claude desktop app's own `claude://code/continue?session=local_…`
   link, with the app's own session id, so it works for desktop sessions. Terminal sessions are listed but can't be opened from the menu.
-- Plan limits update whenever a terminal Claude Code session replies; the desktop app doesn't
-  run status line scripts, so with only desktop sessions open the bars show when they were last
-  updated.
+- Plan limits use an undocumented Anthropic endpoint, so they may stop working if it changes;
+  the panel then shows the last saved numbers and when they were taken.
+- The app checks its own memory once a minute and exits past 300 MB; the login item restarts it.
 - Usage shares are estimates from local transcripts. Your actual plan usage is the limits bar
   at the top of the Usage panel.
 - Claude Code's session files are an internal format. If a Claude Code update changes them,

@@ -15,7 +15,7 @@ struct UsagePanelView: View {
 
     private var content: some View {
         VStack(alignment: .leading, spacing: 0) {
-            PanelHeader(title: "Usage", trailing: store.limits?.plan, onRefresh: { store.load() })
+            PanelHeader(title: "Usage", trailing: store.limits?.plan, onRefresh: { store.load(force: true) })
             limits
             sessionsSection
                 .padding(.bottom, 8)
@@ -32,12 +32,14 @@ struct UsagePanelView: View {
                     limitRow(row, accent: i == 0)
                 }
                 if let at = info.capturedAt {
-                    // Claude Code passes limits only to the status line of terminal sessions.
-                    Text("Updated \(Fmt.duration(Date().timeIntervalSince(at))) ago, from your last terminal session")
+                    Text(Fmt.updated(at) + (info.live ? "" : ", from your last terminal session"))
                         .font(Fonts.small).foregroundStyle(p.muted)
                 }
+                if let e = store.limitsError {
+                    Text(e).font(Fonts.small).foregroundStyle(p.muted)
+                }
             } else {
-                Text("Plan limits appear after the status line script runs. See README.")
+                Text(store.limitsError ?? "Loading plan limits…")
                     .font(Fonts.small).foregroundStyle(p.muted)
             }
         }

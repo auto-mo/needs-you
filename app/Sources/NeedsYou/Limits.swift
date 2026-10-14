@@ -11,11 +11,31 @@ struct LimitsInfo {
     var rows: [LimitRow]
     var capturedAt: Date?
     var plan: String?
+    var live = false  // from the usage service rather than a terminal session's status line
 }
 
 /// Defensive reader: the rate_limits shape is not guaranteed.
 enum LimitsReader {
+    /// The newer of the live snapshot (usage service) and the status line snapshot.
     static func read() -> LimitsInfo? {
+        let candidates = [readLive(), readStatusLine()].compactMap { $0 }
+        return candidates.max { ($0.capturedAt ?? .distantPast) < ($1.capturedAt ?? .distantPast) }
+    }
+
+    private static func readLive() -> LimitsInfo? {
+        guard let j = readJSON(Paths.needsDir.appendingPathComponent("limits-live.json")),
+              let rows = j["rows"] as? [[String: Any]] else { return nil }
+        let parsed: [LimitRow] = rows.compactMap { r in
+            guard let id = r["id"] as? String, let label = r["label"] as? String,
+                  let pct = (r["percent"] as? NSNumber)?.doubleValue else { return nil }
+            return LimitRow(id: id, label: label, percent: min(max(pct, 0), 100),
+                            resets: epochSeconds(r["resets_at"]).map { Date(timeIntervalSince1970: $0) })
+        }
+        return LimitsInfo(rows: parsed, capturedAt: epochSeconds(j["captured_at"]).map { Date(timeIntervalSince1970: $0) },
+                          plan: j["plan"] as? String, live: true)
+    }
+
+    private static func readStatusLine() -> LimitsInfo? {
         guard let j = readJSON(Paths.needsDir.appendingPathComponent("limits.json")),
               let rl = j["rate_limits"] as? [String: Any] else { return nil }
         var rows: [LimitRow] = []

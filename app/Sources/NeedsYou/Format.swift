@@ -1,6 +1,12 @@
 import Foundation
 
 enum Fmt {
+    /// "Updated just now" under a minute, else "Updated 5 min ago".
+    static func updated(_ at: Date, now: Date = Date()) -> String {
+        let s = now.timeIntervalSince(at)
+        return s < 60 ? "Updated just now" : "Updated \(duration(s)) ago"
+    }
+
     static func duration(_ seconds: TimeInterval) -> String {
         let m = max(0, Int(seconds / 60))
         if m < 1 { return "under 1 min" }

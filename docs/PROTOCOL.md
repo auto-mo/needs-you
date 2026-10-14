@@ -12,7 +12,8 @@ which both sides honour). All writes are atomic: write `name.tmp`, then rename.
 | `pending/<id>.json` | hook | app | One permission prompt that is waiting. |
 | `answers/<id>.json` | app | hook | The answer to one prompt. |
 | `events.jsonl` | hook | app | One JSON object per line: session lifecycle events. |
-| `limits.json` | status line script | app | Last plan-limit snapshot. |
+| `limits.json` | status line script | app | Plan limits a terminal session's status line last saw (fallback). |
+| `limits-live.json` | app | app | `{captured_at, plan, rows: [{id, label, percent, resets_at}]}` from the usage service. No token. |
 | `waiting/<session_id>.json` | hook | app | A finished session that can take a reply from the menu bar. |
 | `replies/<session_id>.json` | app | hook | Your reply to that session. |
 | `dismissed.json` | app | app | `{session_id: epoch seconds}`: finished sessions you dismissed. They show in Idle until they stop again. |

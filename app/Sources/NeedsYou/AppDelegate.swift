@@ -83,6 +83,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         tick += 1
         let open = needsPopover.isShown || usagePopover.isShown
         if !demo, tick % 2 == 0 { NeedsStore.writeHeartbeat() }
+        if !demo, tick % 60 == 0 { MemoryCap.check() }
         if open || tick % 3 == 0 {
             needs.refresh()
             if usagePopover.isShown { usage.refreshLimits() }

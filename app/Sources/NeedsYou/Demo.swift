@@ -45,7 +45,7 @@ enum Demo {
             LimitRow(id: "five_hour", label: "Current session", percent: 42, resets: Date().addingTimeInterval(2 * 3600 + 14 * 60 + 30)),
             LimitRow(id: "seven_day", label: "Weekly, all models", percent: 63, resets: Date().addingTimeInterval(3 * 86400)),
             LimitRow(id: "seven_day_opus", label: "Weekly, Opus", percent: 28, resets: Date().addingTimeInterval(3 * 86400)),
-        ], capturedAt: Date().addingTimeInterval(-60), plan: "Max plan")
+        ], capturedAt: Date().addingTimeInterval(-20), plan: "Max plan", live: true)
         func session(_ id: String, _ name: String, _ share: Double, _ m: Double, parts: [PartUsage] = [], heavy: [(label: String, share: Double)] = []) -> SessionUsage {
             SessionUsage(id: id, name: name, cost: share * 100, share: share, tokens: tok(m), parts: parts, heavy: heavy,
                          subAgentCount: max(0, parts.count - 1))

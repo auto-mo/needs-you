@@ -145,8 +145,12 @@ def install_login_item():
     with open(AGENT, "wb") as f:
         plistlib.dump({
             "Label": AGENT_LABEL,
-            "ProgramArguments": ["/usr/bin/open", "-a", APP],
+            # Run the binary itself so launchd can restart it if it exits with an error
+            # (the app exits 1 when it passes its memory cap). A normal quit is left alone.
+            "ProgramArguments": [os.path.join(APP, "Contents/MacOS/NeedsYou")],
             "RunAtLoad": True,
+            "KeepAlive": {"SuccessfulExit": False},
+            "ThrottleInterval": 30,
             "LimitLoadToSessionType": "Aqua",
         }, f)
     print("Needs You will start when you log in (%s)." % AGENT)

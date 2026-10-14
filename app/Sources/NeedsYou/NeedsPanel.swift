@@ -18,6 +18,8 @@ struct NeedsPanelView: View {
     private var content: some View {
         VStack(alignment: .leading, spacing: 0) {
             PanelHeader(title: "Needs you", trailing: "\(store.openCount) sessions open", onRefresh: { store.refresh() })
+            Text(Fmt.updated(store.updatedAt)).font(Fonts.small).foregroundStyle(p.muted)
+                .padding(.horizontal, 16).padding(.top, -6).padding(.bottom, 4)
 
             section("Your turn", count: yourTurnCount) {
                 if yourTurnCount == 0 {
